@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { createMockProvider } from "@/integrations/mock-provider";
 import { createManualImportMarketProvider } from "@/integrations/manual-import-provider";
 import {
+  getTakealotSellerApiReadiness,
   loadTakealotSellerApiConfig,
   TakealotSellerApiProvider
 } from "@/integrations/takealot-seller-api";
@@ -58,4 +59,8 @@ export function getProductService(): ProductService {
 
 export function setProductServiceOverride(service: ProductService | null): void {
   productServiceOverride = service;
+}
+
+export function getTakealotSellerApiReadinessReport() {
+  return getTakealotSellerApiReadiness(process.env);
 }

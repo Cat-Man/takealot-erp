@@ -123,6 +123,7 @@ DATA_FILE_PATH=/absolute/path/to/store.json
 - `PATCH /api/products/:id/manual-market`：保存手工最低竞品并立即刷新建议价
 - `POST /api/products/refresh-active`：批量刷新所有 `active !== false` 的商品
 - `GET /api/products`：返回 `products`、`executions`、`marketSnapshots`
+- `GET /api/integrations/takealot-seller-api/readiness`：返回 Seller API 配置与安全缺口诊断
 - Dashboard 商品卡片可直接保存 provider 绑定
 - Dashboard 商品卡片可直接录入“手工最低价”
 - Dashboard 顶部可直接批量刷新 active 商品
@@ -140,6 +141,15 @@ DATA_FILE_PATH=/absolute/path/to/store.json
 1. Seller Portal 是否有 `API Integration`
 2. 是否能生成 API key
 3. API 是否支持读 own offers / 写 own price / 读 Buy Box 或竞品数据
+
+当前代码里还新增了一个 `Seller API readiness` 诊断层，用来明确告诉你：
+
+- 是否已经配置 `TAKEALOT_SELLER_API_KEY`
+- 是否仍在使用占位 `baseUrl`
+- 当前是否仍保持 `dry-run`
+- 为什么系统仍然不能宣称“真实写接口已接通”
+
+这个 readiness 只做保守诊断，不代表官方协议已经确认，也不会自动放开真实读写。
 
 ## 当前已实现
 
@@ -160,4 +170,4 @@ DATA_FILE_PATH=/absolute/path/to/store.json
 ## 说明
 
 - 当前批量刷新只是本地手动触发入口，还没有引入 cron / 队列调度。
-- 当前工作目录不是 git repo，因此计划文档里的 commit / worktree 步骤在本仓库内不会执行。
+- 当前本地目录已经接入 `Cat-Man/takealot-erp` 仓库；本轮实现是在隔离 worktree 中完成的。

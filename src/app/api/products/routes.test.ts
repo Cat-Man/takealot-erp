@@ -15,6 +15,7 @@ import { POST as refreshProduct } from "./[id]/refresh/route";
 import { PATCH as updateRule } from "./[id]/rule/route";
 import { PATCH as updateSettings } from "./[id]/settings/route";
 import { POST as refreshActiveProducts } from "./refresh-active/route";
+import { GET as getSellerApiReadiness } from "../integrations/takealot-seller-api/readiness/route";
 
 describe("products routes", () => {
   let service: ProductService;
@@ -232,5 +233,46 @@ describe("products routes", () => {
       status: "applied",
       appliedPrice: 233
     });
+  });
+
+  it("returns a guarded Seller API readiness report from the integration route", async () => {
+    const previousApiKey = process.env.TAKEALOT_SELLER_API_KEY;
+    const previousBaseUrl = process.env.TAKEALOT_SELLER_API_BASE_URL;
+    const previousDryRun = process.env.TAKEALOT_SELLER_API_DRY_RUN;
+
+    delete process.env.TAKEALOT_SELLER_API_KEY;
+    delete process.env.TAKEALOT_SELLER_API_BASE_URL;
+    delete process.env.TAKEALOT_SELLER_API_DRY_RUN;
+
+    try {
+      const response = await getSellerApiReadiness();
+      const payload = await response.json();
+
+      expect(payload).toMatchObject({
+        status: "missing_api_key",
+        apiKeyPresent: false,
+        baseUrlSource: "default-placeholder",
+        dryRun: true,
+        canAttemptLiveWrites: false
+      });
+    } finally {
+      if (previousApiKey === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_KEY;
+      } else {
+        process.env.TAKEALOT_SELLER_API_KEY = previousApiKey;
+      }
+
+      if (previousBaseUrl === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_BASE_URL;
+      } else {
+        process.env.TAKEALOT_SELLER_API_BASE_URL = previousBaseUrl;
+      }
+
+      if (previousDryRun === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_DRY_RUN;
+      } else {
+        process.env.TAKEALOT_SELLER_API_DRY_RUN = previousDryRun;
+      }
+    }
   });
 });
