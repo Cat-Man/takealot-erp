@@ -341,4 +341,74 @@ describe("products routes", () => {
       }
     }
   });
+
+  it("reports own-listing reads as available when Seller API read env is configured", async () => {
+    const previousApiKey = process.env.TAKEALOT_SELLER_API_KEY;
+    const previousBaseUrl = process.env.TAKEALOT_SELLER_API_BASE_URL;
+    const previousDryRun = process.env.TAKEALOT_SELLER_API_DRY_RUN;
+    const previousAuthHeaderName =
+      process.env.TAKEALOT_SELLER_API_AUTH_HEADER_NAME;
+    const previousAuthHeaderPrefix =
+      process.env.TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX;
+    const previousOwnListingPathTemplate =
+      process.env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE;
+
+    process.env.TAKEALOT_SELLER_API_KEY = "seller-api-key";
+    process.env.TAKEALOT_SELLER_API_BASE_URL = "https://seller-api.takealot.example";
+    process.env.TAKEALOT_SELLER_API_DRY_RUN = "true";
+    process.env.TAKEALOT_SELLER_API_AUTH_HEADER_NAME = "Authorization";
+    process.env.TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX = "Bearer";
+    process.env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE = "/offers/{productId}";
+
+    try {
+      const response = await getSellerApiReadiness();
+      const payload = await response.json();
+
+      expect(payload).toMatchObject({
+        status: "dry_run_only",
+        apiKeyPresent: true,
+        baseUrlSource: "custom-env",
+        authMode: "custom-header",
+        canReadOwnListings: true,
+        canAttemptLiveWrites: false
+      });
+    } finally {
+      if (previousApiKey === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_KEY;
+      } else {
+        process.env.TAKEALOT_SELLER_API_KEY = previousApiKey;
+      }
+
+      if (previousBaseUrl === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_BASE_URL;
+      } else {
+        process.env.TAKEALOT_SELLER_API_BASE_URL = previousBaseUrl;
+      }
+
+      if (previousDryRun === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_DRY_RUN;
+      } else {
+        process.env.TAKEALOT_SELLER_API_DRY_RUN = previousDryRun;
+      }
+
+      if (previousAuthHeaderName === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_AUTH_HEADER_NAME;
+      } else {
+        process.env.TAKEALOT_SELLER_API_AUTH_HEADER_NAME = previousAuthHeaderName;
+      }
+
+      if (previousAuthHeaderPrefix === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX;
+      } else {
+        process.env.TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX = previousAuthHeaderPrefix;
+      }
+
+      if (previousOwnListingPathTemplate === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE;
+      } else {
+        process.env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE =
+          previousOwnListingPathTemplate;
+      }
+    }
+  });
 });

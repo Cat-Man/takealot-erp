@@ -116,6 +116,7 @@ DATA_FILE_PATH=/absolute/path/to/store.json
 - 已支持按商品分别设置 `sellerProvider` 与 `marketProvider`
 - 已接入 `manual-import` market provider，可手工录入最低竞品价
 - 缺少 `TAKEALOT_SELLER_API_KEY` 时会明确报错
+- 已支持通过显式 env 配置打开 Seller API own-listing 真实读取链路
 - 真实写操作默认建议保持 `dry-run`
 - `dry-run` 执行会落审计记录，但不会改本地持久化现价
 - 尚未硬编码任何未确认的官方 endpoint / auth 协议
@@ -155,9 +156,28 @@ DATA_FILE_PATH=/absolute/path/to/store.json
 - 是否已经配置 `TAKEALOT_SELLER_API_KEY`
 - 是否仍在使用占位 `baseUrl`
 - 当前是否仍保持 `dry-run`
+- 是否已经配置 own-listing 读取所需的 auth header 与 path template
 - 为什么系统仍然不能宣称“真实写接口已接通”
 
 这个 readiness 只做保守诊断，不代表官方协议已经确认，也不会自动放开真实读写。
+
+如果你已经拿到经过验证的 Seller API contract，当前版本可以用下面这组 env 打开 own-listing 真实读取：
+
+```bash
+TAKEALOT_SELLER_API_KEY=...
+TAKEALOT_SELLER_API_BASE_URL=https://verified-seller-api-base.example
+TAKEALOT_SELLER_API_AUTH_HEADER_NAME=Authorization
+TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX=Bearer
+TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE=/offers/{productId}
+```
+
+说明：
+
+- `TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE` 支持用商品字段占位；当前最稳妥的是 `{productId}`，如果你的真实 contract 需要别的字段，可以改成相应占位
+- provider 会优先尝试把返回 JSON 规范化为 `sellerName / currentPrice / currency / sellerSku / stockQuantity / listingStatus / capturedAt`
+- 如果官方真实响应字段和当前常见字段映射不一致，需要继续补字段映射规则，而不是硬改成猜测版协议
+- 这条链路只针对卖家侧 own listing 读取，不包含竞品最低价、Buy Box 或 market intelligence
+- 真实写价仍然单独受 `dry-run` 保护，不会因为读链路打开就自动放开
 
 当前还新增了 `own listing sync`：
 

@@ -13,6 +13,24 @@ describe("TakealotSellerApiProvider", () => {
     );
   });
 
+  it("loads real own-listing read settings from env", () => {
+    const config = loadTakealotSellerApiConfig({
+      TAKEALOT_SELLER_API_KEY: "seller-api-key",
+      TAKEALOT_SELLER_API_BASE_URL: "https://seller-api.takealot.example",
+      TAKEALOT_SELLER_API_AUTH_HEADER_NAME: "Authorization",
+      TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX: "Bearer",
+      TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE: "/offers/{productId}"
+    });
+
+    expect(config).toMatchObject({
+      apiKey: "seller-api-key",
+      baseUrl: "https://seller-api.takealot.example",
+      authHeaderName: "Authorization",
+      authHeaderPrefix: "Bearer",
+      ownListingPathTemplate: "/offers/{productId}"
+    });
+  });
+
   it("builds placeholder auth headers without pretending the protocol is verified", () => {
     const provider = new TakealotSellerApiProvider({
       apiKey: "seller-api-key"
@@ -78,6 +96,54 @@ describe("TakealotSellerApiProvider", () => {
     expect(transport).toHaveBeenCalledTimes(1);
   });
 
+  it("fetches a normalized own listing through real fetch when read config is present", async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          data: {
+            seller_name: "My Store",
+            price: 249,
+            currency: "ZAR",
+            sku: "TAKEALOT-SKU-1",
+            quantity: 8,
+            status: "active"
+          }
+        };
+      }
+    }));
+    const provider = new TakealotSellerApiProvider({
+      apiKey: "seller-api-key",
+      baseUrl: "https://seller-api.takealot.example",
+      authHeaderName: "Authorization",
+      authHeaderPrefix: "Bearer",
+      ownListingPathTemplate: "/offers/{productId}",
+      fetchImpl
+    });
+
+    const listing = await provider.fetchOwnListing(seedProducts[0]!);
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://seller-api.takealot.example/offers/sku-1",
+      expect.objectContaining({
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer seller-api-key"
+        }
+      })
+    );
+    expect(listing).toMatchObject({
+      sellerName: "My Store",
+      currentPrice: 249,
+      currency: "ZAR",
+      sellerSku: "TAKEALOT-SKU-1",
+      stockQuantity: 8,
+      listingStatus: "active"
+    });
+  });
+
   it("reports missing_api_key when no Seller API credentials are configured", () => {
     const readiness = getTakealotSellerApiReadiness({});
 
@@ -126,5 +192,24 @@ describe("TakealotSellerApiProvider", () => {
     expect(readiness.recommendedActions).toContain(
       "确认官方鉴权与写价协议；当前代码仍使用占位鉴权头，不能宣称已接通真实写操作。"
     );
+  });
+
+  it("reports own-listing reads as available only when verified read config is present", () => {
+    const readiness = getTakealotSellerApiReadiness({
+      TAKEALOT_SELLER_API_KEY: "seller-api-key",
+      TAKEALOT_SELLER_API_BASE_URL: "https://seller-api.takealot.example",
+      TAKEALOT_SELLER_API_AUTH_HEADER_NAME: "Authorization",
+      TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX: "Bearer",
+      TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE: "/offers/{productId}"
+    });
+
+    expect(readiness).toMatchObject({
+      status: "dry_run_only",
+      apiKeyPresent: true,
+      baseUrlSource: "custom-env",
+      authMode: "custom-header",
+      canReadOwnListings: true,
+      canAttemptLiveWrites: false
+    });
   });
 });
