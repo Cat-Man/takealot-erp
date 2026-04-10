@@ -6,10 +6,10 @@ import type {
 } from "./marketplace";
 
 export type TakealotSellerApiTransportRequest = {
-  operation: "applyPrice";
+  operation: "fetchOwnListing" | "applyPrice";
   baseUrl: string;
   productId: string;
-  price: number;
+  price?: number;
   headers: Record<string, string>;
 };
 
@@ -49,6 +49,16 @@ export type TakealotSellerApiReadiness = {
   canReadMarketIntelligence: boolean;
   checks: TakealotSellerApiReadinessCheck[];
   recommendedActions: string[];
+};
+
+type TransportOwnListingPayload = {
+  sellerName: string;
+  currentPrice: number;
+  currency: "ZAR";
+  capturedAt: string;
+  sellerSku?: string;
+  stockQuantity?: number;
+  listingStatus?: string;
 };
 
 function createMissingApiKeyError(): Error {
@@ -183,10 +193,29 @@ export class TakealotSellerApiProvider implements MarketplaceProvider {
     };
   }
 
-  async fetchOwnListing(_product: ProductMonitor): Promise<OwnListingSnapshot> {
-    throw new Error(
-      "Takealot Seller API own-listing endpoint is not wired yet. Verify the official seller contract before enabling reads."
-    );
+  async fetchOwnListing(product: ProductMonitor): Promise<OwnListingSnapshot> {
+    if (!this.transport) {
+      throw new Error(
+        "Takealot Seller API own-listing endpoint is not wired yet. Verify the official seller contract before enabling reads."
+      );
+    }
+
+    const payload = (await this.transport({
+      operation: "fetchOwnListing",
+      baseUrl: this.baseUrl,
+      productId: product.id,
+      headers: this.buildAuthHeaders()
+    })) as TransportOwnListingPayload;
+
+    return {
+      sellerName: payload.sellerName,
+      currentPrice: payload.currentPrice,
+      currency: payload.currency,
+      capturedAt: payload.capturedAt,
+      sellerSku: payload.sellerSku,
+      stockQuantity: payload.stockQuantity,
+      listingStatus: payload.listingStatus
+    };
   }
 
   async fetchOffers(_product: ProductMonitor): Promise<MarketOffer[]> {

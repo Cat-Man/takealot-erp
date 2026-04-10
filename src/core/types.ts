@@ -49,6 +49,10 @@ export type ProductMonitor = {
   marketProvider?: ProviderKind;
   ownSellerName: string;
   currentPrice: number;
+  sellerSku?: string;
+  stockQuantity?: number;
+  listingStatus?: string;
+  lastSellerSyncAt?: string;
   active?: boolean;
   rule: RepricingRule;
   manualMarketSnapshot?: ManualMarketSnapshot;

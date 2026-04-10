@@ -34,7 +34,10 @@ export function createMockProvider(): MarketplaceProvider & {
         sellerName: product.ownSellerName,
         currentPrice: ownOffer?.price ?? product.currentPrice,
         currency: ownOffer?.currency ?? "ZAR",
-        capturedAt: new Date().toISOString()
+        capturedAt: new Date().toISOString(),
+        sellerSku: product.id.toUpperCase(),
+        stockQuantity: product.id === "sku-1" ? 14 : 32,
+        listingStatus: "active"
       };
     },
     async fetchOffers(product: ProductMonitor) {

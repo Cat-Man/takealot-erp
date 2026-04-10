@@ -128,6 +128,32 @@ export class ProductService {
     return product;
   }
 
+  async syncOwnListing(productId: string): Promise<{
+    product: ProductMonitor;
+    ownListing: OwnListingSnapshot;
+    syncedAt: string;
+  }> {
+    const state = await this.ensureState();
+    const product = this.getProduct(state, productId);
+    const { sellerProvider } = this.getProviders(product);
+    const ownListing = await sellerProvider.fetchOwnListing(product);
+
+    product.ownSellerName = ownListing.sellerName;
+    product.currentPrice = ownListing.currentPrice;
+    product.sellerSku = ownListing.sellerSku;
+    product.stockQuantity = ownListing.stockQuantity;
+    product.listingStatus = ownListing.listingStatus;
+    product.lastSellerSyncAt = ownListing.capturedAt;
+
+    await this.store.write(state);
+
+    return {
+      product,
+      ownListing,
+      syncedAt: ownListing.capturedAt
+    };
+  }
+
   async refreshProduct(productId: string): Promise<{
     product: ProductMonitor;
     offers: ProductMonitor["lastOffers"];

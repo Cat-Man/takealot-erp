@@ -45,6 +45,39 @@ describe("TakealotSellerApiProvider", () => {
     expect(transport).not.toHaveBeenCalled();
   });
 
+  it("fetches a normalized own listing through an injected transport without hardcoding protocol details", async () => {
+    const transport = vi.fn(async (request) => {
+      expect((request as { operation: string }).operation).toBe("fetchOwnListing");
+
+      return {
+        sellerName: "My Store",
+        currentPrice: 249,
+        currency: "ZAR",
+        capturedAt: "2026-04-10T02:00:00.000Z",
+        sellerSku: "TAKEALOT-SKU-1",
+        stockQuantity: 8,
+        listingStatus: "active"
+      };
+    });
+    const provider = new TakealotSellerApiProvider({
+      apiKey: "seller-api-key",
+      dryRun: true,
+      transport
+    });
+
+    const listing = await provider.fetchOwnListing(seedProducts[0]!);
+
+    expect(listing).toMatchObject({
+      sellerName: "My Store",
+      currentPrice: 249,
+      currency: "ZAR",
+      sellerSku: "TAKEALOT-SKU-1",
+      stockQuantity: 8,
+      listingStatus: "active"
+    });
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
+
   it("reports missing_api_key when no Seller API credentials are configured", () => {
     const readiness = getTakealotSellerApiReadiness({});
 

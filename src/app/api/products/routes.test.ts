@@ -12,6 +12,7 @@ import { POST as applyPrice } from "./[id]/apply/route";
 import { PATCH as updateManualMarket } from "./[id]/manual-market/route";
 import { PATCH as updateProviders } from "./[id]/providers/route";
 import { POST as refreshProduct } from "./[id]/refresh/route";
+import { POST as syncOwnListing } from "./[id]/sync-own-listing/route";
 import { PATCH as updateRule } from "./[id]/rule/route";
 import { PATCH as updateSettings } from "./[id]/settings/route";
 import { POST as refreshActiveProducts } from "./refresh-active/route";
@@ -178,6 +179,32 @@ describe("products routes", () => {
     expect(payload.offers[0]).toMatchObject({
       sellerName: "Cable Shop",
       price: 238
+    });
+  });
+
+  it("syncs own listing data and returns updated seller-side fields", async () => {
+    const response = await syncOwnListing(
+      new Request("http://localhost/api/products/sku-1/sync-own-listing", {
+        method: "POST"
+      }),
+      {
+        params: Promise.resolve({
+          id: "sku-1"
+        })
+      }
+    );
+    const payload = await response.json();
+
+    expect(payload.product).toMatchObject({
+      id: "sku-1",
+      sellerSku: "SKU-1",
+      stockQuantity: 14,
+      listingStatus: "active"
+    });
+    expect(payload.ownListing).toMatchObject({
+      sellerSku: "SKU-1",
+      stockQuantity: 14,
+      listingStatus: "active"
     });
   });
 

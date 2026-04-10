@@ -195,4 +195,27 @@ describe("Dashboard", () => {
       screen.getByText("manual-import / Manual Seller / R235")
     ).toBeInTheDocument();
   });
+
+  it("shows own listing sync controls and seller-side fields", () => {
+    render(
+      <Dashboard
+        initialProducts={[
+          {
+            ...products[0]!,
+            sellerSku: "SKU-1",
+            stockQuantity: 14,
+            listingStatus: "active",
+            lastSellerSyncAt: "2026-04-10T02:00:00.000Z"
+          }
+        ]}
+        initialExecutions={executions}
+        initialMarketSnapshots={snapshots}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "同步卖家数据" })).toBeInTheDocument();
+    expect(screen.getByText("SKU-1")).toBeInTheDocument();
+    expect(screen.getByText("14")).toBeInTheDocument();
+    expect(screen.getByText("active")).toBeInTheDocument();
+  });
 });

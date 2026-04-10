@@ -14,13 +14,16 @@ function createProvider(offers: MarketOffer[]) {
     appliedPrices,
     provider: {
       async fetchOwnListing() {
-        return {
-          sellerName: "My Store",
-          currentPrice: 249,
-          currency: "ZAR" as const,
-          capturedAt: "2026-04-09T03:00:00.000Z"
-        };
-      },
+      return {
+        sellerName: "My Store",
+        currentPrice: 249,
+        currency: "ZAR" as const,
+        capturedAt: "2026-04-09T03:00:00.000Z",
+        sellerSku: "SKU-1",
+        stockQuantity: 14,
+        listingStatus: "active"
+      };
+    },
       async fetchOffers() {
         return offers;
       },
@@ -381,5 +384,39 @@ describe("ProductService", () => {
       marketProvider: "mock",
       source: "refresh"
     });
+  });
+
+  it("syncs own listing fields without creating market snapshots", async () => {
+    const filePath = join(mkdtempSync(join(tmpdir(), "takealot-own-listing-")), "db.json");
+    const provider = createProvider([
+      { sellerName: "Cable Shop", price: 238, currency: "ZAR" }
+    ]);
+    const service = new ProductService({
+      store: new JsonProductStore(filePath),
+      providers: {
+        mock: provider.provider
+      }
+    });
+
+    await service.listProducts();
+    const result = await service.syncOwnListing(seedProducts[0]!.id);
+    const snapshots = await service.listMarketSnapshots(seedProducts[0]!.id);
+    const persisted = JSON.parse(readFileSync(filePath, "utf8"));
+
+    expect(result.product).toMatchObject({
+      id: seedProducts[0]!.id,
+      currentPrice: 249,
+      sellerSku: "SKU-1",
+      stockQuantity: 14,
+      listingStatus: "active",
+      lastSellerSyncAt: "2026-04-09T03:00:00.000Z"
+    });
+    expect(result.ownListing).toMatchObject({
+      sellerSku: "SKU-1",
+      stockQuantity: 14,
+      listingStatus: "active"
+    });
+    expect(snapshots).toHaveLength(0);
+    expect(persisted.marketSnapshots).toEqual([]);
   });
 });

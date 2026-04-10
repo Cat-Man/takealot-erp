@@ -10,6 +10,9 @@ export type OwnListingSnapshot = {
   currentPrice: number;
   currency: CurrencyCode;
   capturedAt: string;
+  sellerSku?: string;
+  stockQuantity?: number;
+  listingStatus?: string;
 };
 
 export type ApplyPriceResult = {

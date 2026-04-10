@@ -28,6 +28,11 @@ type ApplyResponse = {
   execution: PriceExecution;
 };
 
+type OwnListingSyncResponse = {
+  product: ProductMonitor;
+  syncedAt: string;
+};
+
 type RuleResponse = {
   product: ProductMonitor;
 };
@@ -115,6 +120,18 @@ export function Dashboard({
     setMessage(
       `已批量刷新 ${payload.summary.refreshedCount} 个 active 商品，跳过 ${payload.summary.skippedCount} 个`
     );
+  }
+
+  async function syncOwnListing(productId: string) {
+    const response = await fetch(`/api/products/${productId}/sync-own-listing`, {
+      method: "POST"
+    });
+    const payload = (await response.json()) as OwnListingSyncResponse;
+
+    setProducts((current) =>
+      current.map((product) => (product.id === productId ? payload.product : product))
+    );
+    setMessage(`已同步 ${payload.product.title} 的卖家数据`);
   }
 
   async function applyPrice(productId: string) {
@@ -254,6 +271,11 @@ export function Dashboard({
             onApply={() => {
               startTransition(() => {
                 void applyPrice(product.id);
+              });
+            }}
+            onSyncOwnListing={() => {
+              startTransition(() => {
+                void syncOwnListing(product.id);
               });
             }}
             onSaveProviders={(patch) => {

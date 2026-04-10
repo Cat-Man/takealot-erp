@@ -18,6 +18,7 @@
 - `active` SKU 监控开关
 - `marketSnapshots` 独立快照历史
 - `refresh-active` 批量刷新当前启用监控的商品
+- `own listing sync` 卖家侧商品数据同步
 
 ## 启动
 
@@ -65,6 +66,7 @@ DATA_FILE_PATH=/absolute/path/to/store.json
 
 你可以直接体验：
 
+- 同步卖家数据
 - 刷新市场价
 - 批量刷新 active 商品
 - 启用 / 停用某个 SKU 的监控
@@ -122,9 +124,11 @@ DATA_FILE_PATH=/absolute/path/to/store.json
 - `PATCH /api/products/:id/settings`：切换单商品的 `active` 监控状态
 - `PATCH /api/products/:id/manual-market`：保存手工最低竞品并立即刷新建议价
 - `POST /api/products/refresh-active`：批量刷新所有 `active !== false` 的商品
+- `POST /api/products/:id/sync-own-listing`：同步单商品的卖家侧 listing 数据
 - `GET /api/products`：返回 `products`、`executions`、`marketSnapshots`
 - `GET /api/integrations/takealot-seller-api/readiness`：返回 Seller API 配置与安全缺口诊断
 - Dashboard 商品卡片可直接保存 provider 绑定
+- Dashboard 商品卡片可直接同步卖家侧数据并显示 `SKU / 库存 / listing 状态`
 - Dashboard 商品卡片可直接录入“手工最低价”
 - Dashboard 顶部可直接批量刷新 active 商品
 - Dashboard 商品卡片可直接启停监控，并展示最近 1-3 条市场快照
@@ -151,6 +155,13 @@ DATA_FILE_PATH=/absolute/path/to/store.json
 
 这个 readiness 只做保守诊断，不代表官方协议已经确认，也不会自动放开真实读写。
 
+当前还新增了 `own listing sync`：
+
+- 它只同步你自己卖家侧的 listing 数据
+- 当前关注字段是 `sellerSku / currentPrice / stockQuantity / listingStatus / capturedAt`
+- 它不等于竞品最低价采集
+- 它不代表 Seller API 已经提供市场情报接口
+
 ## 当前已实现
 
 - 本地后台页面
@@ -163,6 +174,7 @@ DATA_FILE_PATH=/absolute/path/to/store.json
 - active 监控开关
 - 市场快照历史
 - active 商品批量刷新
+- own listing sync
 - 测试覆盖核心闭环
 - BMAD-lite 项目治理文档
 - Seller API-first 设计与实施计划
