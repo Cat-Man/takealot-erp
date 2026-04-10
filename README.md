@@ -19,6 +19,7 @@
 - `marketSnapshots` 独立快照历史
 - `refresh-active` 批量刷新当前启用监控的商品
 - `own listing sync` 卖家侧商品数据同步
+- `sync-own-listings-active` 批量同步当前启用监控商品的卖家侧数据
 
 ## 启动
 
@@ -69,6 +70,7 @@ DATA_FILE_PATH=/absolute/path/to/store.json
 - 同步卖家数据
 - 刷新市场价
 - 批量刷新 active 商品
+- 批量同步 active 卖家数据
 - 启用 / 停用某个 SKU 的监控
 - 修改规则
 - 执行调价
@@ -125,12 +127,14 @@ DATA_FILE_PATH=/absolute/path/to/store.json
 - `PATCH /api/products/:id/manual-market`：保存手工最低竞品并立即刷新建议价
 - `POST /api/products/refresh-active`：批量刷新所有 `active !== false` 的商品
 - `POST /api/products/:id/sync-own-listing`：同步单商品的卖家侧 listing 数据
+- `POST /api/products/sync-own-listings-active`：批量同步所有 `active !== false` 商品的卖家侧 listing 数据
 - `GET /api/products`：返回 `products`、`executions`、`marketSnapshots`
 - `GET /api/integrations/takealot-seller-api/readiness`：返回 Seller API 配置与安全缺口诊断
 - Dashboard 商品卡片可直接保存 provider 绑定
 - Dashboard 商品卡片可直接同步卖家侧数据并显示 `SKU / 库存 / listing 状态`
 - Dashboard 商品卡片可直接录入“手工最低价”
 - Dashboard 顶部可直接批量刷新 active 商品
+- Dashboard 顶部可直接批量同步 active 商品的卖家侧数据
 - Dashboard 商品卡片可直接启停监控，并展示最近 1-3 条市场快照
 - 执行历史会把 `dry_run` 明确标成“模拟执行”
 
@@ -161,6 +165,8 @@ DATA_FILE_PATH=/absolute/path/to/store.json
 - 当前关注字段是 `sellerSku / currentPrice / stockQuantity / listingStatus / capturedAt`
 - 它不等于竞品最低价采集
 - 它不代表 Seller API 已经提供市场情报接口
+- 批量版本同样只处理 `active !== false` 的商品
+- 它不会生成 `marketSnapshots`，避免和市场侧最低价快照混淆
 
 ## 当前已实现
 
@@ -175,6 +181,7 @@ DATA_FILE_PATH=/absolute/path/to/store.json
 - 市场快照历史
 - active 商品批量刷新
 - own listing sync
+- active 商品批量 own listing sync
 - 测试覆盖核心闭环
 - BMAD-lite 项目治理文档
 - Seller API-first 设计与实施计划

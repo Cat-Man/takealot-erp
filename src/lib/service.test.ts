@@ -419,4 +419,58 @@ describe("ProductService", () => {
     expect(snapshots).toHaveLength(0);
     expect(persisted.marketSnapshots).toEqual([]);
   });
+
+  it("syncs own listing data only for active products in batch mode", async () => {
+    const filePath = join(mkdtempSync(join(tmpdir(), "takealot-own-listing-batch-")), "db.json");
+    const provider = createProvider([
+      { sellerName: "Cable Shop", price: 238, currency: "ZAR" }
+    ]);
+    const service = new ProductService({
+      store: new JsonProductStore(filePath),
+      providers: {
+        mock: {
+          ...provider.provider,
+          async fetchOwnListing(product) {
+            return {
+              sellerName: "My Store",
+              currentPrice: product.id === "sku-1" ? 249 : 499,
+              currency: "ZAR" as const,
+              capturedAt: "2026-04-10T03:00:00.000Z",
+              sellerSku: product.id.toUpperCase(),
+              stockQuantity: product.id === "sku-1" ? 14 : 7,
+              listingStatus: product.id === "sku-1" ? "active" : "paused"
+            };
+          }
+        }
+      }
+    });
+
+    await service.listProducts();
+    await service.updateProductSettings(seedProducts[1]!.id, {
+      active: false
+    });
+
+    const result = await service.syncActiveOwnListings();
+    const persisted = JSON.parse(readFileSync(filePath, "utf8"));
+
+    expect(result.summary).toMatchObject({
+      requestedCount: 2,
+      syncedCount: 1,
+      skippedCount: 1
+    });
+    expect(result.results).toHaveLength(1);
+    expect(result.results[0]?.product).toMatchObject({
+      id: "sku-1",
+      sellerSku: "SKU-1",
+      stockQuantity: 14,
+      listingStatus: "active"
+    });
+    expect(persisted.products[0]).toMatchObject({
+      sellerSku: "SKU-1",
+      stockQuantity: 14,
+      listingStatus: "active"
+    });
+    expect(persisted.products[1].sellerSku).toBeUndefined();
+    expect(persisted.products[1].stockQuantity).toBeUndefined();
+  });
 });

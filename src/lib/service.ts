@@ -154,6 +154,39 @@ export class ProductService {
     };
   }
 
+  async syncActiveOwnListings(): Promise<{
+    results: Array<{
+      product: ProductMonitor;
+      ownListing: OwnListingSnapshot;
+      syncedAt: string;
+    }>;
+    summary: {
+      requestedCount: number;
+      syncedCount: number;
+      skippedCount: number;
+    };
+  }> {
+    const products = await this.listProducts();
+    const results = [];
+
+    for (const product of products) {
+      if (product.active === false) {
+        continue;
+      }
+
+      results.push(await this.syncOwnListing(product.id));
+    }
+
+    return {
+      results,
+      summary: {
+        requestedCount: products.length,
+        syncedCount: results.length,
+        skippedCount: products.length - results.length
+      }
+    };
+  }
+
   async refreshProduct(productId: string): Promise<{
     product: ProductMonitor;
     offers: ProductMonitor["lastOffers"];

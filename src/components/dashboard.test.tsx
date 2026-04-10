@@ -188,6 +188,9 @@ describe("Dashboard", () => {
     expect(
       screen.getByRole("button", { name: "刷新 active 商品" })
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "同步 active 卖家数据" })
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "停用监控" })).toBeInTheDocument();
     expect(screen.getByText("监控中")).toBeInTheDocument();
     expect(screen.getByText("最近快照")).toBeInTheDocument();

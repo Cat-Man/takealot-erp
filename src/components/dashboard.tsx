@@ -56,6 +56,15 @@ type BatchRefreshResponse = {
   };
 };
 
+type BatchOwnListingSyncResponse = {
+  results: OwnListingSyncResponse[];
+  summary: {
+    requestedCount: number;
+    syncedCount: number;
+    skippedCount: number;
+  };
+};
+
 function mergeSnapshots(
   current: MarketSnapshot[],
   incoming: MarketSnapshot[]
@@ -132,6 +141,23 @@ export function Dashboard({
       current.map((product) => (product.id === productId ? payload.product : product))
     );
     setMessage(`已同步 ${payload.product.title} 的卖家数据`);
+  }
+
+  async function syncActiveOwnListingsBatch() {
+    const response = await fetch("/api/products/sync-own-listings-active", {
+      method: "POST"
+    });
+    const payload = (await response.json()) as BatchOwnListingSyncResponse;
+    const syncedProducts = new Map(
+      payload.results.map((result) => [result.product.id, result.product])
+    );
+
+    setProducts((current) =>
+      current.map((product) => syncedProducts.get(product.id) ?? product)
+    );
+    setMessage(
+      `已批量同步 ${payload.summary.syncedCount} 个 active 商品的卖家数据，跳过 ${payload.summary.skippedCount} 个`
+    );
   }
 
   async function applyPrice(productId: string) {
@@ -248,6 +274,18 @@ export function Dashboard({
             }}
           >
             刷新 active 商品
+          </button>
+          <button
+            type="button"
+            className="ghost-button"
+            disabled={isPending}
+            onClick={() => {
+              startTransition(() => {
+                void syncActiveOwnListingsBatch();
+              });
+            }}
+          >
+            同步 active 卖家数据
           </button>
           <p className="status-note">
             {message ??

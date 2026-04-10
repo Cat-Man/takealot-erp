@@ -16,6 +16,7 @@ import { POST as syncOwnListing } from "./[id]/sync-own-listing/route";
 import { PATCH as updateRule } from "./[id]/rule/route";
 import { PATCH as updateSettings } from "./[id]/settings/route";
 import { POST as refreshActiveProducts } from "./refresh-active/route";
+import { POST as syncActiveOwnListings } from "./sync-own-listings-active/route";
 import { GET as getSellerApiReadiness } from "../integrations/takealot-seller-api/readiness/route";
 
 describe("products routes", () => {
@@ -239,6 +240,44 @@ describe("products routes", () => {
       requestedCount: 2,
       refreshedCount: 1,
       skippedCount: 1
+    });
+  });
+
+  it("syncs own listing data only for active products in batch mode", async () => {
+    await updateSettings(
+      new Request("http://localhost/api/products/sku-2/settings", {
+        method: "PATCH",
+        body: JSON.stringify({
+          active: false
+        }),
+        headers: {
+          "content-type": "application/json"
+        }
+      }),
+      {
+        params: Promise.resolve({
+          id: "sku-2"
+        })
+      }
+    );
+
+    const response = await syncActiveOwnListings(
+      new Request("http://localhost/api/products/sync-own-listings-active", {
+        method: "POST"
+      })
+    );
+    const payload = await response.json();
+
+    expect(payload.summary).toMatchObject({
+      requestedCount: 2,
+      syncedCount: 1,
+      skippedCount: 1
+    });
+    expect(payload.results).toHaveLength(1);
+    expect(payload.results[0].product).toMatchObject({
+      id: "sku-1",
+      sellerSku: "SKU-1",
+      stockQuantity: 14
     });
   });
 
