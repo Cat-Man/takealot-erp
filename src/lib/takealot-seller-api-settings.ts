@@ -3,6 +3,9 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import {
   getTakealotSellerApiReadiness,
+  TAKEALOT_MARKETPLACE_API_DEFAULT_AUTH_HEADER_NAME,
+  TAKEALOT_MARKETPLACE_API_DEFAULT_BASE_URL,
+  TAKEALOT_MARKETPLACE_API_DEFAULT_OWN_LISTING_PATH_TEMPLATE,
   type TakealotSellerApiReadiness
 } from "@/integrations/takealot-seller-api";
 
@@ -172,16 +175,19 @@ export function getTakealotSellerApiSettingsReport(
     settings: {
       apiKeyConfigured: Boolean(apiKey),
       apiKeyPreview: maskApiKey(apiKey),
-      baseUrl: normalizeOptionalString(mergedEnv.TAKEALOT_SELLER_API_BASE_URL) ?? "",
+      baseUrl:
+        normalizeOptionalString(mergedEnv.TAKEALOT_SELLER_API_BASE_URL) ??
+        TAKEALOT_MARKETPLACE_API_DEFAULT_BASE_URL,
       dryRun: mergedEnv.TAKEALOT_SELLER_API_DRY_RUN !== "false",
       authHeaderName:
-        normalizeOptionalString(mergedEnv.TAKEALOT_SELLER_API_AUTH_HEADER_NAME) ?? "",
+        normalizeOptionalString(mergedEnv.TAKEALOT_SELLER_API_AUTH_HEADER_NAME) ??
+        TAKEALOT_MARKETPLACE_API_DEFAULT_AUTH_HEADER_NAME,
       authHeaderPrefix:
         normalizeOptionalString(mergedEnv.TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX) ?? "",
       ownListingPathTemplate:
         normalizeOptionalString(
           mergedEnv.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE
-        ) ?? "",
+        ) ?? TAKEALOT_MARKETPLACE_API_DEFAULT_OWN_LISTING_PATH_TEMPLATE,
       ownListingSellerNamePath:
         normalizeOptionalString(
           mergedEnv.TAKEALOT_SELLER_API_OWN_LISTING_SELLER_NAME_PATH

@@ -35,14 +35,18 @@ export type TakealotSellerApiConfig = {
 
 type EnvLike = Record<string, string | undefined>;
 
-const DEFAULT_BASE_URL = "https://seller-api.takealot.local";
+export const TAKEALOT_MARKETPLACE_API_DEFAULT_BASE_URL =
+  "https://marketplace-api.takealot.com/v1";
+export const TAKEALOT_MARKETPLACE_API_DEFAULT_AUTH_HEADER_NAME = "X-API-Key";
+export const TAKEALOT_MARKETPLACE_API_DEFAULT_OWN_LISTING_PATH_TEMPLATE =
+  "/offers/by_sku/{sellerSku}";
 
 export type TakealotSellerApiReadinessStatus =
   | "missing_api_key"
   | "dry_run_only"
   | "live_requested_but_guarded";
 
-type TakealotSellerApiAuthMode = "placeholder" | "custom-header";
+type TakealotSellerApiAuthMode = "marketplace-api-key" | "custom-header";
 
 export type TakealotSellerApiReadinessCheck = {
   id: "api_key" | "base_url" | "mode" | "contract";
@@ -54,7 +58,7 @@ export type TakealotSellerApiReadiness = {
   status: TakealotSellerApiReadinessStatus;
   apiKeyPresent: boolean;
   baseUrl: string;
-  baseUrlSource: "default-placeholder" | "custom-env";
+  baseUrlSource: "official-default" | "custom-env";
   dryRun: boolean;
   authMode: TakealotSellerApiAuthMode;
   canAttemptLiveWrites: boolean;
@@ -101,6 +105,17 @@ function getPathValue(root: JsonRecord, path: string): unknown {
   let current: unknown = root;
 
   for (const segment of segments) {
+    if (Array.isArray(current)) {
+      const index = Number(segment);
+
+      if (!Number.isInteger(index) || index < 0 || index >= current.length) {
+        return undefined;
+      }
+
+      current = current[index];
+      continue;
+    }
+
     if (!isJsonRecord(current) || !(segment in current)) {
       return undefined;
     }
@@ -109,6 +124,42 @@ function getPathValue(root: JsonRecord, path: string): unknown {
   }
 
   return current;
+}
+
+function sumSellerWarehouseStock(payload: unknown): number | undefined {
+  const value = getCandidateValue(payload, ["seller_warehouse_stock"]);
+
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  let total = 0;
+  let found = false;
+
+  for (const item of value) {
+    if (!isJsonRecord(item)) {
+      continue;
+    }
+
+    const quantity = item.quantity_available;
+
+    if (typeof quantity === "number" && Number.isFinite(quantity)) {
+      total += quantity;
+      found = true;
+      continue;
+    }
+
+    if (typeof quantity === "string") {
+      const parsed = Number(quantity.replace(/[^0-9.-]/g, ""));
+
+      if (Number.isFinite(parsed)) {
+        total += parsed;
+        found = true;
+      }
+    }
+  }
+
+  return found ? total : undefined;
 }
 
 function getCandidateValue(payload: unknown, candidates: string[]): unknown {
@@ -180,9 +231,11 @@ function resolveOwnListingUrl(
   pathTemplate: string,
   product: ProductMonitor
 ): string {
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
   const values: Record<string, unknown> = {
     ...product,
-    productId: product.id
+    productId: product.id,
+    sellerSku: product.sellerSku ?? product.id
   };
   const path = pathTemplate.replace(/\{([^}]+)\}/g, (_match, key: string) => {
     const value = values[key];
@@ -196,7 +249,7 @@ function resolveOwnListingUrl(
     return encodeURIComponent(String(value));
   });
 
-  return new URL(path, baseUrl).toString();
+  return `${normalizedBaseUrl}/${path.replace(/^\/+/, "")}`;
 }
 
 function normalizeOwnListingPayload(
@@ -266,6 +319,7 @@ function normalizeOwnListingPayload(
       (fieldPaths.stockQuantity
         ? readNumberCandidate(payload, [fieldPaths.stockQuantity])
         : undefined) ??
+      sumSellerWarehouseStock(payload) ??
       readNumberCandidate(payload, [
         "stockQuantity",
         "stock_quantity",
@@ -291,12 +345,17 @@ export function loadTakealotSellerApiConfig(
 
   return {
     apiKey,
-    baseUrl: env.TAKEALOT_SELLER_API_BASE_URL?.trim() || DEFAULT_BASE_URL,
+    baseUrl:
+      env.TAKEALOT_SELLER_API_BASE_URL?.trim() ||
+      TAKEALOT_MARKETPLACE_API_DEFAULT_BASE_URL,
     dryRun: env.TAKEALOT_SELLER_API_DRY_RUN !== "false",
-    authHeaderName: env.TAKEALOT_SELLER_API_AUTH_HEADER_NAME?.trim(),
+    authHeaderName:
+      env.TAKEALOT_SELLER_API_AUTH_HEADER_NAME?.trim() ||
+      TAKEALOT_MARKETPLACE_API_DEFAULT_AUTH_HEADER_NAME,
     authHeaderPrefix: env.TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX?.trim(),
     ownListingPathTemplate:
-      env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE?.trim(),
+      env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE?.trim() ||
+      TAKEALOT_MARKETPLACE_API_DEFAULT_OWN_LISTING_PATH_TEMPLATE,
     ownListingSellerNamePath: normalizeConfiguredPath(
       env.TAKEALOT_SELLER_API_OWN_LISTING_SELLER_NAME_PATH
     ),
@@ -325,22 +384,17 @@ export function getTakealotSellerApiReadiness(
   env: EnvLike
 ): TakealotSellerApiReadiness {
   const apiKeyPresent = Boolean(env.TAKEALOT_SELLER_API_KEY?.trim());
-  const baseUrl = env.TAKEALOT_SELLER_API_BASE_URL?.trim() || DEFAULT_BASE_URL;
+  const baseUrl =
+    env.TAKEALOT_SELLER_API_BASE_URL?.trim() ||
+    TAKEALOT_MARKETPLACE_API_DEFAULT_BASE_URL;
   const baseUrlSource =
-    env.TAKEALOT_SELLER_API_BASE_URL?.trim() ? "custom-env" : "default-placeholder";
+    env.TAKEALOT_SELLER_API_BASE_URL?.trim() ? "custom-env" : "official-default";
   const dryRun = env.TAKEALOT_SELLER_API_DRY_RUN !== "false";
-  const authHeaderName = env.TAKEALOT_SELLER_API_AUTH_HEADER_NAME?.trim();
-  const ownListingPathTemplate =
-    env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE?.trim();
-  const authMode: TakealotSellerApiAuthMode = authHeaderName
+  const configuredAuthHeaderName = env.TAKEALOT_SELLER_API_AUTH_HEADER_NAME?.trim();
+  const authMode: TakealotSellerApiAuthMode = configuredAuthHeaderName
     ? "custom-header"
-    : "placeholder";
-  const canReadOwnListings = Boolean(
-    apiKeyPresent &&
-      baseUrlSource === "custom-env" &&
-      authHeaderName &&
-      ownListingPathTemplate
-  );
+    : "marketplace-api-key";
+  const canReadOwnListings = apiKeyPresent;
   const status = !apiKeyPresent
     ? "missing_api_key"
     : dryRun
@@ -356,26 +410,26 @@ export function getTakealotSellerApiReadiness(
     },
     {
       id: "base_url",
-      status: baseUrlSource === "custom-env" ? "pass" : "warn",
+      status: "pass",
       message:
         baseUrlSource === "custom-env"
-          ? `已配置自定义 Seller API 基地址: ${baseUrl}`
-          : "仍在使用占位 Seller API 基地址。"
+          ? `已配置自定义 Marketplace API 基地址: ${baseUrl}`
+          : `当前使用官方 Marketplace API 默认基地址: ${baseUrl}`
     },
     {
       id: "mode",
       status: dryRun ? "pass" : "warn",
       message: dryRun
         ? "当前处于 dry-run 保护模式。"
-        : "当前请求 live 模式，但真实写接口仍未验证。"
+        : "当前请求 live 模式，建议先用单个 SKU 验证真实 PATCH。"
     },
     {
       id: "contract",
       status: "warn",
       message:
         canReadOwnListings
-          ? "已配置 own listing 读取所需参数，但仍需按真实账号验证字段映射与限流行为。"
-          : "鉴权头、own listing 读取和市场情报读取仍是保守占位实现，不能宣称已接通官方协议。"
+          ? "已具备 Marketplace API own offer 读取基础条件，仍需按真实账号验证字段映射与限流行为。"
+          : "缺少 API key，尚不能读取 own offer 或执行 live 调价。"
     }
   ];
   const recommendedActions = [];
@@ -384,19 +438,9 @@ export function getTakealotSellerApiReadiness(
     recommendedActions.push("配置 TAKEALOT_SELLER_API_KEY。");
   }
 
-  if (baseUrlSource === "default-placeholder") {
+  if (baseUrlSource === "custom-env") {
     recommendedActions.push(
-      "配置 TAKEALOT_SELLER_API_BASE_URL 为真实 Seller API 基地址。"
-    );
-  }
-
-  if (!authHeaderName) {
-    recommendedActions.push("配置 TAKEALOT_SELLER_API_AUTH_HEADER_NAME。");
-  }
-
-  if (!ownListingPathTemplate) {
-    recommendedActions.push(
-      "配置 TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE 以启用 own listing 读取。"
+      "确认自定义 Marketplace API Base URL 与官方环境一致，避免误指向旧网关。"
     );
   }
 
@@ -406,21 +450,19 @@ export function getTakealotSellerApiReadiness(
     );
   } else {
     recommendedActions.push(
-      authMode === "custom-header"
-        ? "确认官方写价 endpoint 与 payload；当前只开放了卖家侧读取链路，真实写操作仍需单独验证。"
-        : "确认官方鉴权与写价协议；当前代码仍使用占位鉴权头，不能宣称已接通真实写操作。"
+      "先用单个 SKU 验证 Marketplace API live PATCH，再放大到批量调价。"
     );
   }
 
   if (canReadOwnListings) {
     recommendedActions.push(
-      "用单个已知商品先验证 own listing 字段映射，再放大到批量同步。"
+      "用单个已知商品先验证 own offer 字段映射，再放大到批量同步。"
     );
   } else {
-    recommendedActions.push("确认 own listing 读取 contract，再开放真实读接口。");
+    recommendedActions.push("配置 API key 后再验证 own offer 读取。");
   }
   recommendedActions.push(
-    "确认竞品最低价数据来源；当前不要假设 Seller API 一定提供市场情报。"
+    "确认竞品最低价数据来源；当前不要假设 Marketplace API 提供市场情报。"
   );
 
   return {
@@ -430,7 +472,7 @@ export function getTakealotSellerApiReadiness(
     baseUrlSource,
     dryRun,
     authMode,
-    canAttemptLiveWrites: false,
+    canAttemptLiveWrites: apiKeyPresent && !dryRun,
     canReadOwnListings,
     canReadMarketIntelligence: false,
     checks,
@@ -442,9 +484,9 @@ export class TakealotSellerApiProvider implements MarketplaceProvider {
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private readonly dryRun: boolean;
-  private readonly authHeaderName?: string;
+  private readonly authHeaderName: string;
   private readonly authHeaderPrefix?: string;
-  private readonly ownListingPathTemplate?: string;
+  private readonly ownListingPathTemplate: string;
   private readonly ownListingFieldPaths: OwnListingFieldPaths;
   private readonly fetchImpl?: typeof fetch;
   private readonly transport?: TakealotSellerApiConfig["transport"];
@@ -455,11 +497,15 @@ export class TakealotSellerApiProvider implements MarketplaceProvider {
     }
 
     this.apiKey = config.apiKey;
-    this.baseUrl = config.baseUrl ?? DEFAULT_BASE_URL;
-    this.dryRun = config.dryRun ?? false;
-    this.authHeaderName = config.authHeaderName?.trim() || undefined;
+    this.baseUrl = config.baseUrl ?? TAKEALOT_MARKETPLACE_API_DEFAULT_BASE_URL;
+    this.dryRun = config.dryRun ?? true;
+    this.authHeaderName =
+      config.authHeaderName?.trim() ||
+      TAKEALOT_MARKETPLACE_API_DEFAULT_AUTH_HEADER_NAME;
     this.authHeaderPrefix = config.authHeaderPrefix?.trim() || undefined;
-    this.ownListingPathTemplate = config.ownListingPathTemplate?.trim() || undefined;
+    this.ownListingPathTemplate =
+      config.ownListingPathTemplate?.trim() ||
+      TAKEALOT_MARKETPLACE_API_DEFAULT_OWN_LISTING_PATH_TEMPLATE;
     this.ownListingFieldPaths = {
       sellerName: normalizeConfiguredPath(config.ownListingSellerNamePath),
       currentPrice: normalizeConfiguredPath(config.ownListingCurrentPricePath),
@@ -474,21 +520,13 @@ export class TakealotSellerApiProvider implements MarketplaceProvider {
   }
 
   buildAuthHeaders(): Record<string, string> {
-    if (this.authHeaderName) {
-      const authValue = this.authHeaderPrefix
-        ? `${this.authHeaderPrefix} ${this.apiKey}`
-        : this.apiKey;
+    const authValue = this.authHeaderPrefix
+      ? `${this.authHeaderPrefix} ${this.apiKey}`
+      : this.apiKey;
 
-      return {
-        "Content-Type": "application/json",
-        [this.authHeaderName]: authValue
-      };
-    }
-
-    // Placeholder only until the official Seller API auth contract is verified.
     return {
       "Content-Type": "application/json",
-      "X-Takealot-Auth-Placeholder": this.apiKey
+      [this.authHeaderName]: authValue
     };
   }
 
@@ -512,9 +550,9 @@ export class TakealotSellerApiProvider implements MarketplaceProvider {
       };
     }
 
-    if (!this.fetchImpl || !this.ownListingPathTemplate) {
+    if (!this.fetchImpl) {
       throw new Error(
-        "Takealot Seller API own-listing endpoint is not wired yet. Verify the official seller contract before enabling reads."
+        "Takealot Marketplace API own-offer read requires fetch support in this runtime."
       );
     }
 
@@ -548,7 +586,7 @@ export class TakealotSellerApiProvider implements MarketplaceProvider {
   async applyPrice(
     productId: string,
     newPrice: number,
-    _product: ProductMonitor
+    product: ProductMonitor
   ): Promise<ApplyPriceResult> {
     if (this.dryRun) {
       return {
@@ -558,19 +596,36 @@ export class TakealotSellerApiProvider implements MarketplaceProvider {
       };
     }
 
-    if (!this.transport) {
+    if (this.transport) {
+      await this.transport({
+        operation: "applyPrice",
+        baseUrl: this.baseUrl,
+        productId,
+        price: newPrice,
+        headers: this.buildAuthHeaders()
+      });
+    } else if (this.fetchImpl) {
+      const response = await this.fetchImpl(
+        resolveOwnListingUrl(this.baseUrl, this.ownListingPathTemplate, product),
+        {
+          method: "PATCH",
+          headers: this.buildAuthHeaders(),
+          body: JSON.stringify({
+            selling_price: newPrice
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Takealot Marketplace API price update failed with status ${response.status}.`
+        );
+      }
+    } else {
       throw new Error(
-        "Takealot Seller API write endpoint is not configured. Keep dry-run enabled until the official protocol is verified."
+        "Takealot Marketplace API live price update requires fetch or transport support in this runtime."
       );
     }
-
-    await this.transport({
-      operation: "applyPrice",
-      baseUrl: this.baseUrl,
-      productId,
-      price: newPrice,
-      headers: this.buildAuthHeaders()
-    });
 
     return {
       appliedPrice: newPrice,

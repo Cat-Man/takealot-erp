@@ -318,7 +318,7 @@ describe("products routes", () => {
       expect(payload).toMatchObject({
         status: "missing_api_key",
         apiKeyPresent: false,
-        baseUrlSource: "default-placeholder",
+        baseUrlSource: "official-default",
         dryRun: true,
         canAttemptLiveWrites: false
       });
@@ -343,7 +343,7 @@ describe("products routes", () => {
     }
   });
 
-  it("reports own-listing reads as available when Seller API read env is configured", async () => {
+  it("reports own-listing reads as available when only the Marketplace API key is configured", async () => {
     const previousApiKey = process.env.TAKEALOT_SELLER_API_KEY;
     const previousBaseUrl = process.env.TAKEALOT_SELLER_API_BASE_URL;
     const previousDryRun = process.env.TAKEALOT_SELLER_API_DRY_RUN;
@@ -355,11 +355,11 @@ describe("products routes", () => {
       process.env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE;
 
     process.env.TAKEALOT_SELLER_API_KEY = "seller-api-key";
-    process.env.TAKEALOT_SELLER_API_BASE_URL = "https://seller-api.takealot.example";
-    process.env.TAKEALOT_SELLER_API_DRY_RUN = "true";
-    process.env.TAKEALOT_SELLER_API_AUTH_HEADER_NAME = "Authorization";
-    process.env.TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX = "Bearer";
-    process.env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE = "/offers/{productId}";
+    delete process.env.TAKEALOT_SELLER_API_BASE_URL;
+    delete process.env.TAKEALOT_SELLER_API_DRY_RUN;
+    delete process.env.TAKEALOT_SELLER_API_AUTH_HEADER_NAME;
+    delete process.env.TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX;
+    delete process.env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE;
 
     try {
       const response = await getSellerApiReadiness();
@@ -368,8 +368,9 @@ describe("products routes", () => {
       expect(payload).toMatchObject({
         status: "dry_run_only",
         apiKeyPresent: true,
-        baseUrlSource: "custom-env",
-        authMode: "custom-header",
+        baseUrl: "https://marketplace-api.takealot.com/v1",
+        baseUrlSource: "official-default",
+        authMode: "marketplace-api-key",
         canReadOwnListings: true,
         canAttemptLiveWrites: false
       });
@@ -413,7 +414,7 @@ describe("products routes", () => {
     }
   });
 
-  it("reports own-listing reads as available when gui-saved Seller API settings exist", async () => {
+  it("reports official Marketplace API defaults when gui-saved settings only provide the API key", async () => {
     const previousSettingsFilePath = process.env.TAKEALOT_SELLER_API_SETTINGS_FILE_PATH;
     const previousApiKey = process.env.TAKEALOT_SELLER_API_KEY;
     const previousBaseUrl = process.env.TAKEALOT_SELLER_API_BASE_URL;
@@ -444,12 +445,7 @@ describe("products routes", () => {
             "content-type": "application/json"
           },
           body: JSON.stringify({
-            apiKey: "seller-api-key",
-            baseUrl: "https://seller-api.takealot.example",
-            dryRun: true,
-            authHeaderName: "Authorization",
-            authHeaderPrefix: "Bearer",
-            ownListingPathTemplate: "/offers/{productId}"
+            apiKey: "seller-api-key"
           })
         })
       );
@@ -460,8 +456,9 @@ describe("products routes", () => {
       expect(payload).toMatchObject({
         status: "dry_run_only",
         apiKeyPresent: true,
-        baseUrlSource: "custom-env",
-        authMode: "custom-header",
+        baseUrl: "https://marketplace-api.takealot.com/v1",
+        baseUrlSource: "official-default",
+        authMode: "marketplace-api-key",
         canReadOwnListings: true,
         canAttemptLiveWrites: false
       });

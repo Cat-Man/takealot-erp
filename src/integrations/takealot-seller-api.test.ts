@@ -31,14 +31,28 @@ describe("TakealotSellerApiProvider", () => {
     });
   });
 
-  it("builds placeholder auth headers without pretending the protocol is verified", () => {
+  it("loads official Marketplace API defaults when optional env values are absent", () => {
+    const config = loadTakealotSellerApiConfig({
+      TAKEALOT_SELLER_API_KEY: "seller-api-key"
+    });
+
+    expect(config).toMatchObject({
+      apiKey: "seller-api-key",
+      baseUrl: "https://marketplace-api.takealot.com/v1",
+      authHeaderName: "X-API-Key",
+      ownListingPathTemplate: "/offers/by_sku/{sellerSku}"
+    });
+    expect(config.authHeaderPrefix).toBeUndefined();
+  });
+
+  it("builds official Marketplace API auth headers by default", () => {
     const provider = new TakealotSellerApiProvider({
       apiKey: "seller-api-key"
     });
 
     expect(provider.buildAuthHeaders()).toEqual({
       "Content-Type": "application/json",
-      "X-Takealot-Auth-Placeholder": "seller-api-key"
+      "X-API-Key": "seller-api-key"
     });
   });
 
@@ -205,6 +219,93 @@ describe("TakealotSellerApiProvider", () => {
     });
   });
 
+  it("normalizes official Marketplace offer payloads and aggregates seller warehouse stock", async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          offer_id: 123456,
+          sku: "SKU-ABC123",
+          selling_price: 345,
+          status: "buyable",
+          updated_at: "2026-04-11T08:00:00+02:00",
+          seller_warehouse_stock: [
+            { seller_warehouse_id: 1, quantity_available: 4 },
+            { seller_warehouse_id: 2, quantity_available: 6 }
+          ]
+        };
+      }
+    }));
+    const provider = new TakealotSellerApiProvider({
+      apiKey: "seller-api-key",
+      fetchImpl
+    });
+
+    const listing = await provider.fetchOwnListing({
+      ...seedProducts[0]!,
+      sellerSku: "SKU-ABC123"
+    });
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://marketplace-api.takealot.com/v1/offers/by_sku/SKU-ABC123",
+      expect.objectContaining({
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": "seller-api-key"
+        }
+      })
+    );
+    expect(listing).toMatchObject({
+      currentPrice: 345,
+      sellerSku: "SKU-ABC123",
+      stockQuantity: 10,
+      listingStatus: "buyable",
+      capturedAt: "2026-04-11T08:00:00+02:00"
+    });
+  });
+
+  it("issues a live Marketplace API PATCH by sku when dry-run is disabled", async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          selling_price: 233
+        };
+      }
+    }));
+    const provider = new TakealotSellerApiProvider({
+      apiKey: "seller-api-key",
+      dryRun: false,
+      fetchImpl
+    });
+
+    const result = await provider.applyPrice("sku-1", 233, {
+      ...seedProducts[0]!,
+      sellerSku: "SKU-ABC123"
+    });
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://marketplace-api.takealot.com/v1/offers/by_sku/SKU-ABC123",
+      expect.objectContaining({
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": "seller-api-key"
+        },
+        body: JSON.stringify({
+          selling_price: 233
+        })
+      })
+    );
+    expect(result).toMatchObject({
+      appliedPrice: 233,
+      mode: "live"
+    });
+  });
+
   it("reports missing_api_key when no Seller API credentials are configured", () => {
     const readiness = getTakealotSellerApiReadiness({});
 
@@ -224,15 +325,12 @@ describe("TakealotSellerApiProvider", () => {
     expect(readiness).toMatchObject({
       status: "dry_run_only",
       apiKeyPresent: true,
-      baseUrlSource: "default-placeholder",
+      baseUrlSource: "official-default",
       dryRun: true,
       canAttemptLiveWrites: false,
-      canReadOwnListings: false,
+      canReadOwnListings: true,
       canReadMarketIntelligence: false
     });
-    expect(readiness.recommendedActions).toContain(
-      "配置 TAKEALOT_SELLER_API_BASE_URL 为真实 Seller API 基地址。"
-    );
   });
 
   it("reports a guarded live configuration when custom base URL is set but the contract remains unverified", () => {
@@ -248,10 +346,10 @@ describe("TakealotSellerApiProvider", () => {
       baseUrl: "https://seller-api.takealot.example",
       baseUrlSource: "custom-env",
       dryRun: false,
-      canAttemptLiveWrites: false
+      canAttemptLiveWrites: true
     });
     expect(readiness.recommendedActions).toContain(
-      "确认官方鉴权与写价协议；当前代码仍使用占位鉴权头，不能宣称已接通真实写操作。"
+      "先用单个 SKU 验证 Marketplace API live PATCH，再放大到批量调价。"
     );
   });
 

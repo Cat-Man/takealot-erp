@@ -11,7 +11,7 @@
 
 - `mock`：可直接演示完整流程，适合先验证规则、页面和 API
 - `takealot-browser`：旧的浏览器后备骨架，不再是推荐主路线
-- `takealot-seller-api`：Seller API-first 骨架，默认保守为 `dry-run`
+- `takealot-seller-api`：按官方 Marketplace API v1 默认协议收敛的卖家侧接入，默认保守为 `dry-run`
 
 当前还新增了三项运营能力：
 
@@ -101,7 +101,12 @@ TAKEALOT_SELLER_API_SETTINGS_FILE_PATH=/absolute/path/to/takealot-seller-api-set
 
 ## 真实 Takealot 接入
 
-最新路线已经调整为 `Seller API-first`。
+最新路线已经调整为 `Marketplace API-first`。
+
+说明：
+
+- 当前模块名仍保留为 `takealot-seller-api`，避免一次性大范围重命名
+- 这里指向的是 Takealot Marketplace API 文档：`https://marketplace-api.takealot.com/v1/docs`
 
 原因：
 
@@ -119,14 +124,17 @@ TAKEALOT_SELLER_API_SETTINGS_FILE_PATH=/absolute/path/to/takealot-seller-api-set
 当前代码层面的状态是：
 
 - 已拆分 `seller operations` 与 `market intelligence` provider 合同
-- 已接入 `takealot-seller-api` skeleton
+- 已接入 `takealot-seller-api`，默认对齐官方 Marketplace API v1
 - 已支持按商品分别设置 `sellerProvider` 与 `marketProvider`
 - 已接入 `manual-import` market provider，可手工录入最低竞品价
 - 缺少 `TAKEALOT_SELLER_API_KEY` 时会明确报错
-- 已支持通过显式 env 配置打开 Seller API own-listing 真实读取链路
+- 默认 own offer 读取已按官方 `GET /offers/by_sku/{sku}` 接线
+- 默认 live 改价已按官方 `PATCH /offers/by_sku/{sku}` 接线，但仍建议先保持 `dry-run`
+- 默认鉴权头已对齐官方 `X-API-Key`
+- 已支持通过 env 或 GUI 覆盖 base URL、header 和字段映射
 - 真实写操作默认建议保持 `dry-run`
 - `dry-run` 执行会落审计记录，但不会改本地持久化现价
-- 尚未硬编码任何未确认的官方 endpoint / auth 协议
+- 市场竞品最低价、搜索列表、Buy Box 仍不属于这套官方 API 已确认能力
 
 相关接口与前端能力：
 
@@ -164,10 +172,10 @@ TAKEALOT_SELLER_API_SETTINGS_FILE_PATH=/absolute/path/to/takealot-seller-api-set
 当前代码里还新增了一个 `Seller API readiness` 诊断层，用来明确告诉你：
 
 - 是否已经配置 `TAKEALOT_SELLER_API_KEY`
-- 是否仍在使用占位 `baseUrl`
+- 当前是否使用官方默认 `baseUrl`
 - 当前是否仍保持 `dry-run`
-- 是否已经配置 own-listing 读取所需的 auth header 与 path template
-- 为什么系统仍然不能宣称“真实写接口已接通”
+- 是否已经具备 own offer 读取条件
+- 为什么 live 改价仍建议先从单 SKU 验证开始
 
 这个 readiness 只做保守诊断，不代表官方协议已经确认，也不会自动放开真实读写。
 
@@ -175,27 +183,27 @@ TAKEALOT_SELLER_API_SETTINGS_FILE_PATH=/absolute/path/to/takealot-seller-api-set
 
 - API key 只显示是否已配置和 masked preview，不会把旧 key 明文回填到页面
 - API key 输入框是替换模式，留空表示保持当前 key
+- GUI 默认会展示官方 Marketplace API 的 base URL、`X-API-Key` 和 `/offers/by_sku/{sellerSku}`
 - GUI 设置优先于 `process.env`，便于本地运营同学直接切换 base URL、header、path template 和 `dry-run`
 - 如果真实响应字段名和当前默认猜测不同，可以直接在 GUI 里配置 own-listing 字段路径映射
 
-如果你已经拿到经过验证的 Seller API contract，当前版本可以用下面这组 env 打开 own-listing 真实读取：
+当前最小可用配置只需要：
 
 ```bash
 TAKEALOT_SELLER_API_KEY=...
-TAKEALOT_SELLER_API_BASE_URL=https://verified-seller-api-base.example
-TAKEALOT_SELLER_API_AUTH_HEADER_NAME=Authorization
-TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX=Bearer
-TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE=/offers/{productId}
-TAKEALOT_SELLER_API_OWN_LISTING_CURRENT_PRICE_PATH=attributes.pricing.current.amount
-TAKEALOT_SELLER_API_OWN_LISTING_STOCK_QUANTITY_PATH=attributes.inventory.available_to_sell
 ```
 
 说明：
 
-- `TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE` 支持用商品字段占位；当前最稳妥的是 `{productId}`，如果你的真实 contract 需要别的字段，可以改成相应占位
+- 默认会使用：
+- `baseUrl = https://marketplace-api.takealot.com/v1`
+- `authHeaderName = X-API-Key`
+- `ownListingPathTemplate = /offers/by_sku/{sellerSku}`
+- `TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE` 支持用商品字段占位；当前默认是 `{sellerSku}`，缺失时会 fallback 到 `product.id`
 - `*_PATH` 映射字段都是可选的；只有当官方响应字段名偏离当前内置常见字段时才需要填写
 - 当前支持配置 `sellerName / currentPrice / currency / capturedAt / sellerSku / stockQuantity / listingStatus` 这 7 个 own-listing 字段路径
 - provider 会优先尝试把返回 JSON 规范化为 `sellerName / currentPrice / currency / sellerSku / stockQuantity / listingStatus / capturedAt`
+- 官方 offer payload 当前已优先支持 `selling_price / updated_at / seller_warehouse_stock[].quantity_available`
 - 如果官方真实响应字段和当前常见字段映射不一致，需要继续补字段映射规则，而不是硬改成猜测版协议
 - 这条链路只针对卖家侧 own listing 读取，不包含竞品最低价、Buy Box 或 market intelligence
 - 真实写价仍然单独受 `dry-run` 保护，不会因为读链路打开就自动放开
