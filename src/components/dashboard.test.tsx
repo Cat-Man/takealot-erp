@@ -99,7 +99,14 @@ const sellerApiSettings = {
     dryRun: true,
     authHeaderName: "Authorization",
     authHeaderPrefix: "Bearer",
-    ownListingPathTemplate: "/offers/{productId}"
+    ownListingPathTemplate: "/offers/{productId}",
+    ownListingSellerNamePath: "attributes.merchant.display_name",
+    ownListingCurrentPricePath: "attributes.pricing.current.amount",
+    ownListingCurrencyPath: "attributes.pricing.current.currency",
+    ownListingCapturedAtPath: "attributes.synced_at",
+    ownListingSellerSkuPath: "attributes.seller.sku_code",
+    ownListingStockQuantityPath: "attributes.inventory.available_to_sell",
+    ownListingListingStatusPath: "attributes.lifecycle.state_label"
   },
   readiness: {
     status: "dry_run_only",
@@ -267,6 +274,12 @@ describe("Dashboard", () => {
     expect(screen.getByText("API key 已配置")).toBeInTheDocument();
     expect(screen.getByDisplayValue("https://seller-api.takealot.example")).toBeInTheDocument();
     expect(screen.getByDisplayValue("/offers/{productId}")).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("attributes.pricing.current.amount")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("attributes.inventory.available_to_sell")
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "保存 Seller API 设置" })).toBeInTheDocument();
   });
 });

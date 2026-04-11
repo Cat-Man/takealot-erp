@@ -86,7 +86,14 @@ describe("takealot seller api settings route", () => {
           dryRun: true,
           authHeaderName: "Authorization",
           authHeaderPrefix: "Bearer",
-          ownListingPathTemplate: "/offers/{productId}"
+          ownListingPathTemplate: "/offers/{productId}",
+          ownListingSellerNamePath: "attributes.merchant.display_name",
+          ownListingCurrentPricePath: "attributes.pricing.current.amount",
+          ownListingCurrencyPath: "attributes.pricing.current.currency",
+          ownListingCapturedAtPath: "attributes.synced_at",
+          ownListingSellerSkuPath: "attributes.seller.sku_code",
+          ownListingStockQuantityPath: "attributes.inventory.available_to_sell",
+          ownListingListingStatusPath: "attributes.lifecycle.state_label"
         })
       })
     );
@@ -103,7 +110,14 @@ describe("takealot seller api settings route", () => {
       dryRun: true,
       authHeaderName: "Authorization",
       authHeaderPrefix: "Bearer",
-      ownListingPathTemplate: "/offers/{productId}"
+      ownListingPathTemplate: "/offers/{productId}",
+      ownListingSellerNamePath: "attributes.merchant.display_name",
+      ownListingCurrentPricePath: "attributes.pricing.current.amount",
+      ownListingCurrencyPath: "attributes.pricing.current.currency",
+      ownListingCapturedAtPath: "attributes.synced_at",
+      ownListingSellerSkuPath: "attributes.seller.sku_code",
+      ownListingStockQuantityPath: "attributes.inventory.available_to_sell",
+      ownListingListingStatusPath: "attributes.lifecycle.state_label"
     });
     expect(patchPayload.settings.apiKeyPreview).toEqual(expect.stringContaining("key"));
     expect(getPayload.settings).toMatchObject({
@@ -122,7 +136,14 @@ describe("takealot seller api settings route", () => {
       dryRun: true,
       authHeaderName: "Authorization",
       authHeaderPrefix: "Bearer",
-      ownListingPathTemplate: "/offers/{productId}"
+      ownListingPathTemplate: "/offers/{productId}",
+      ownListingSellerNamePath: "attributes.merchant.display_name",
+      ownListingCurrentPricePath: "attributes.pricing.current.amount",
+      ownListingCurrencyPath: "attributes.pricing.current.currency",
+      ownListingCapturedAtPath: "attributes.synced_at",
+      ownListingSellerSkuPath: "attributes.seller.sku_code",
+      ownListingStockQuantityPath: "attributes.inventory.available_to_sell",
+      ownListingListingStatusPath: "attributes.lifecycle.state_label"
     });
   });
 });

@@ -15,6 +15,13 @@ export type TakealotSellerApiPersistedSettings = {
   authHeaderName?: string;
   authHeaderPrefix?: string;
   ownListingPathTemplate?: string;
+  ownListingSellerNamePath?: string;
+  ownListingCurrentPricePath?: string;
+  ownListingCurrencyPath?: string;
+  ownListingCapturedAtPath?: string;
+  ownListingSellerSkuPath?: string;
+  ownListingStockQuantityPath?: string;
+  ownListingListingStatusPath?: string;
   updatedAt?: string;
 };
 
@@ -25,6 +32,13 @@ export type TakealotSellerApiSettingsPatch = {
   authHeaderName?: string;
   authHeaderPrefix?: string;
   ownListingPathTemplate?: string;
+  ownListingSellerNamePath?: string;
+  ownListingCurrentPricePath?: string;
+  ownListingCurrencyPath?: string;
+  ownListingCapturedAtPath?: string;
+  ownListingSellerSkuPath?: string;
+  ownListingStockQuantityPath?: string;
+  ownListingListingStatusPath?: string;
 };
 
 export type TakealotSellerApiSettingsView = {
@@ -35,6 +49,13 @@ export type TakealotSellerApiSettingsView = {
   authHeaderName: string;
   authHeaderPrefix: string;
   ownListingPathTemplate: string;
+  ownListingSellerNamePath: string;
+  ownListingCurrentPricePath: string;
+  ownListingCurrencyPath: string;
+  ownListingCapturedAtPath: string;
+  ownListingSellerSkuPath: string;
+  ownListingStockQuantityPath: string;
+  ownListingListingStatusPath: string;
   updatedAt?: string;
 };
 
@@ -115,7 +136,28 @@ export function mergeTakealotSellerApiEnv(
       normalizeOptionalString(env.TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX),
     TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE:
       persisted.ownListingPathTemplate ??
-      normalizeOptionalString(env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE)
+      normalizeOptionalString(env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE),
+    TAKEALOT_SELLER_API_OWN_LISTING_SELLER_NAME_PATH:
+      persisted.ownListingSellerNamePath ??
+      normalizeOptionalString(env.TAKEALOT_SELLER_API_OWN_LISTING_SELLER_NAME_PATH),
+    TAKEALOT_SELLER_API_OWN_LISTING_CURRENT_PRICE_PATH:
+      persisted.ownListingCurrentPricePath ??
+      normalizeOptionalString(env.TAKEALOT_SELLER_API_OWN_LISTING_CURRENT_PRICE_PATH),
+    TAKEALOT_SELLER_API_OWN_LISTING_CURRENCY_PATH:
+      persisted.ownListingCurrencyPath ??
+      normalizeOptionalString(env.TAKEALOT_SELLER_API_OWN_LISTING_CURRENCY_PATH),
+    TAKEALOT_SELLER_API_OWN_LISTING_CAPTURED_AT_PATH:
+      persisted.ownListingCapturedAtPath ??
+      normalizeOptionalString(env.TAKEALOT_SELLER_API_OWN_LISTING_CAPTURED_AT_PATH),
+    TAKEALOT_SELLER_API_OWN_LISTING_SELLER_SKU_PATH:
+      persisted.ownListingSellerSkuPath ??
+      normalizeOptionalString(env.TAKEALOT_SELLER_API_OWN_LISTING_SELLER_SKU_PATH),
+    TAKEALOT_SELLER_API_OWN_LISTING_STOCK_QUANTITY_PATH:
+      persisted.ownListingStockQuantityPath ??
+      normalizeOptionalString(env.TAKEALOT_SELLER_API_OWN_LISTING_STOCK_QUANTITY_PATH),
+    TAKEALOT_SELLER_API_OWN_LISTING_LISTING_STATUS_PATH:
+      persisted.ownListingListingStatusPath ??
+      normalizeOptionalString(env.TAKEALOT_SELLER_API_OWN_LISTING_LISTING_STATUS_PATH)
   };
 }
 
@@ -139,6 +181,34 @@ export function getTakealotSellerApiSettingsReport(
       ownListingPathTemplate:
         normalizeOptionalString(
           mergedEnv.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE
+        ) ?? "",
+      ownListingSellerNamePath:
+        normalizeOptionalString(
+          mergedEnv.TAKEALOT_SELLER_API_OWN_LISTING_SELLER_NAME_PATH
+        ) ?? "",
+      ownListingCurrentPricePath:
+        normalizeOptionalString(
+          mergedEnv.TAKEALOT_SELLER_API_OWN_LISTING_CURRENT_PRICE_PATH
+        ) ?? "",
+      ownListingCurrencyPath:
+        normalizeOptionalString(
+          mergedEnv.TAKEALOT_SELLER_API_OWN_LISTING_CURRENCY_PATH
+        ) ?? "",
+      ownListingCapturedAtPath:
+        normalizeOptionalString(
+          mergedEnv.TAKEALOT_SELLER_API_OWN_LISTING_CAPTURED_AT_PATH
+        ) ?? "",
+      ownListingSellerSkuPath:
+        normalizeOptionalString(
+          mergedEnv.TAKEALOT_SELLER_API_OWN_LISTING_SELLER_SKU_PATH
+        ) ?? "",
+      ownListingStockQuantityPath:
+        normalizeOptionalString(
+          mergedEnv.TAKEALOT_SELLER_API_OWN_LISTING_STOCK_QUANTITY_PATH
+        ) ?? "",
+      ownListingListingStatusPath:
+        normalizeOptionalString(
+          mergedEnv.TAKEALOT_SELLER_API_OWN_LISTING_LISTING_STATUS_PATH
         ) ?? "",
       updatedAt: persisted.updatedAt
     },
@@ -179,6 +249,48 @@ export async function updateTakealotSellerApiSettings(
   if (patch.ownListingPathTemplate !== undefined) {
     next.ownListingPathTemplate = normalizeOptionalString(
       patch.ownListingPathTemplate
+    );
+  }
+
+  if (patch.ownListingSellerNamePath !== undefined) {
+    next.ownListingSellerNamePath = normalizeOptionalString(
+      patch.ownListingSellerNamePath
+    );
+  }
+
+  if (patch.ownListingCurrentPricePath !== undefined) {
+    next.ownListingCurrentPricePath = normalizeOptionalString(
+      patch.ownListingCurrentPricePath
+    );
+  }
+
+  if (patch.ownListingCurrencyPath !== undefined) {
+    next.ownListingCurrencyPath = normalizeOptionalString(
+      patch.ownListingCurrencyPath
+    );
+  }
+
+  if (patch.ownListingCapturedAtPath !== undefined) {
+    next.ownListingCapturedAtPath = normalizeOptionalString(
+      patch.ownListingCapturedAtPath
+    );
+  }
+
+  if (patch.ownListingSellerSkuPath !== undefined) {
+    next.ownListingSellerSkuPath = normalizeOptionalString(
+      patch.ownListingSellerSkuPath
+    );
+  }
+
+  if (patch.ownListingStockQuantityPath !== undefined) {
+    next.ownListingStockQuantityPath = normalizeOptionalString(
+      patch.ownListingStockQuantityPath
+    );
+  }
+
+  if (patch.ownListingListingStatusPath !== undefined) {
+    next.ownListingListingStatusPath = normalizeOptionalString(
+      patch.ownListingListingStatusPath
     );
   }
 

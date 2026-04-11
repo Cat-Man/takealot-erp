@@ -11,6 +11,13 @@ type SettingsPatch = {
   authHeaderName?: string;
   authHeaderPrefix?: string;
   ownListingPathTemplate?: string;
+  ownListingSellerNamePath?: string;
+  ownListingCurrentPricePath?: string;
+  ownListingCurrencyPath?: string;
+  ownListingCapturedAtPath?: string;
+  ownListingSellerSkuPath?: string;
+  ownListingStockQuantityPath?: string;
+  ownListingListingStatusPath?: string;
 };
 
 export async function GET() {

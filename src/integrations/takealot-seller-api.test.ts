@@ -144,6 +144,67 @@ describe("TakealotSellerApiProvider", () => {
     });
   });
 
+  it("prefers configured own-listing response paths when the payload uses non-default field names", async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          data: {
+            attributes: {
+              merchant: {
+                display_name: "Mapped Store"
+              },
+              pricing: {
+                current: {
+                  amount: "259.00",
+                  currency: "ZAR"
+                }
+              },
+              seller: {
+                sku_code: "ALT-SKU-1"
+              },
+              inventory: {
+                available_to_sell: "12"
+              },
+              lifecycle: {
+                state_label: "buyable"
+              },
+              synced_at: "2026-04-11T02:00:00.000Z"
+            }
+          }
+        };
+      }
+    }));
+    const provider = new TakealotSellerApiProvider({
+      apiKey: "seller-api-key",
+      baseUrl: "https://seller-api.takealot.example",
+      authHeaderName: "Authorization",
+      authHeaderPrefix: "Bearer",
+      ownListingPathTemplate: "/offers/{productId}",
+      ownListingSellerNamePath: "attributes.merchant.display_name",
+      ownListingCurrentPricePath: "attributes.pricing.current.amount",
+      ownListingCurrencyPath: "attributes.pricing.current.currency",
+      ownListingCapturedAtPath: "attributes.synced_at",
+      ownListingSellerSkuPath: "attributes.seller.sku_code",
+      ownListingStockQuantityPath: "attributes.inventory.available_to_sell",
+      ownListingListingStatusPath: "attributes.lifecycle.state_label",
+      fetchImpl
+    });
+
+    const listing = await provider.fetchOwnListing(seedProducts[0]!);
+
+    expect(listing).toMatchObject({
+      sellerName: "Mapped Store",
+      currentPrice: 259,
+      currency: "ZAR",
+      capturedAt: "2026-04-11T02:00:00.000Z",
+      sellerSku: "ALT-SKU-1",
+      stockQuantity: 12,
+      listingStatus: "buyable"
+    });
+  });
+
   it("reports missing_api_key when no Seller API credentials are configured", () => {
     const readiness = getTakealotSellerApiReadiness({});
 

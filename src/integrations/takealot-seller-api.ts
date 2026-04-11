@@ -20,6 +20,13 @@ export type TakealotSellerApiConfig = {
   authHeaderName?: string;
   authHeaderPrefix?: string;
   ownListingPathTemplate?: string;
+  ownListingSellerNamePath?: string;
+  ownListingCurrentPricePath?: string;
+  ownListingCurrencyPath?: string;
+  ownListingCapturedAtPath?: string;
+  ownListingSellerSkuPath?: string;
+  ownListingStockQuantityPath?: string;
+  ownListingListingStatusPath?: string;
   fetchImpl?: typeof fetch;
   transport?: (
     request: TakealotSellerApiTransportRequest
@@ -68,6 +75,16 @@ type TransportOwnListingPayload = {
 };
 
 type JsonRecord = Record<string, unknown>;
+
+type OwnListingFieldPaths = {
+  sellerName?: string;
+  currentPrice?: string;
+  currency?: string;
+  capturedAt?: string;
+  sellerSku?: string;
+  stockQuantity?: string;
+  listingStatus?: string;
+};
 
 function createMissingApiKeyError(): Error {
   return new Error(
@@ -153,6 +170,11 @@ function readNumberCandidate(payload: unknown, candidates: string[]): number | u
   return undefined;
 }
 
+function normalizeConfiguredPath(path: string | undefined): string | undefined {
+  const trimmed = path?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
 function resolveOwnListingUrl(
   baseUrl: string,
   pathTemplate: string,
@@ -179,15 +201,20 @@ function resolveOwnListingUrl(
 
 function normalizeOwnListingPayload(
   payload: unknown,
-  product: ProductMonitor
+  product: ProductMonitor,
+  fieldPaths: OwnListingFieldPaths = {}
 ): OwnListingSnapshot {
-  const currentPrice = readNumberCandidate(payload, [
-    "currentPrice",
-    "current_price",
-    "price",
-    "sellingPrice",
-    "selling_price"
-  ]);
+  const currentPrice =
+    (fieldPaths.currentPrice
+      ? readNumberCandidate(payload, [fieldPaths.currentPrice])
+      : undefined) ??
+    readNumberCandidate(payload, [
+      "currentPrice",
+      "current_price",
+      "price",
+      "sellingPrice",
+      "selling_price"
+    ]);
 
   if (currentPrice === undefined) {
     throw new Error(
@@ -197,38 +224,59 @@ function normalizeOwnListingPayload(
 
   return {
     sellerName:
+      (fieldPaths.sellerName
+        ? readStringCandidate(payload, [fieldPaths.sellerName])
+        : undefined) ??
       readStringCandidate(payload, [
         "sellerName",
         "seller_name",
         "seller.name",
         "seller.displayName"
-      ]) ?? product.ownSellerName,
+      ]) ??
+      product.ownSellerName,
     currentPrice,
     currency:
-      readStringCandidate(payload, ["currency", "currencyCode", "currency_code"]) ===
-      "ZAR"
+      ((fieldPaths.currency
+        ? readStringCandidate(payload, [fieldPaths.currency])
+        : undefined) ??
+        readStringCandidate(payload, [
+          "currency",
+          "currencyCode",
+          "currency_code"
+        ])) === "ZAR"
         ? "ZAR"
         : "ZAR",
     capturedAt:
+      (fieldPaths.capturedAt
+        ? readStringCandidate(payload, [fieldPaths.capturedAt])
+        : undefined) ??
       readStringCandidate(payload, [
         "capturedAt",
         "captured_at",
         "updatedAt",
         "updated_at",
         "timestamp"
-      ]) ?? new Date().toISOString(),
-    sellerSku: readStringCandidate(payload, ["sellerSku", "seller_sku", "sku"]),
-    stockQuantity: readNumberCandidate(payload, [
-      "stockQuantity",
-      "stock_quantity",
-      "quantity",
-      "stock"
-    ]),
-    listingStatus: readStringCandidate(payload, [
-      "listingStatus",
-      "listing_status",
-      "status"
-    ])
+      ]) ??
+      new Date().toISOString(),
+    sellerSku:
+      (fieldPaths.sellerSku
+        ? readStringCandidate(payload, [fieldPaths.sellerSku])
+        : undefined) ?? readStringCandidate(payload, ["sellerSku", "seller_sku", "sku"]),
+    stockQuantity:
+      (fieldPaths.stockQuantity
+        ? readNumberCandidate(payload, [fieldPaths.stockQuantity])
+        : undefined) ??
+      readNumberCandidate(payload, [
+        "stockQuantity",
+        "stock_quantity",
+        "quantity",
+        "stock"
+      ]),
+    listingStatus:
+      (fieldPaths.listingStatus
+        ? readStringCandidate(payload, [fieldPaths.listingStatus])
+        : undefined) ??
+      readStringCandidate(payload, ["listingStatus", "listing_status", "status"])
   };
 }
 
@@ -248,7 +296,28 @@ export function loadTakealotSellerApiConfig(
     authHeaderName: env.TAKEALOT_SELLER_API_AUTH_HEADER_NAME?.trim(),
     authHeaderPrefix: env.TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX?.trim(),
     ownListingPathTemplate:
-      env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE?.trim()
+      env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE?.trim(),
+    ownListingSellerNamePath: normalizeConfiguredPath(
+      env.TAKEALOT_SELLER_API_OWN_LISTING_SELLER_NAME_PATH
+    ),
+    ownListingCurrentPricePath: normalizeConfiguredPath(
+      env.TAKEALOT_SELLER_API_OWN_LISTING_CURRENT_PRICE_PATH
+    ),
+    ownListingCurrencyPath: normalizeConfiguredPath(
+      env.TAKEALOT_SELLER_API_OWN_LISTING_CURRENCY_PATH
+    ),
+    ownListingCapturedAtPath: normalizeConfiguredPath(
+      env.TAKEALOT_SELLER_API_OWN_LISTING_CAPTURED_AT_PATH
+    ),
+    ownListingSellerSkuPath: normalizeConfiguredPath(
+      env.TAKEALOT_SELLER_API_OWN_LISTING_SELLER_SKU_PATH
+    ),
+    ownListingStockQuantityPath: normalizeConfiguredPath(
+      env.TAKEALOT_SELLER_API_OWN_LISTING_STOCK_QUANTITY_PATH
+    ),
+    ownListingListingStatusPath: normalizeConfiguredPath(
+      env.TAKEALOT_SELLER_API_OWN_LISTING_LISTING_STATUS_PATH
+    )
   };
 }
 
@@ -376,6 +445,7 @@ export class TakealotSellerApiProvider implements MarketplaceProvider {
   private readonly authHeaderName?: string;
   private readonly authHeaderPrefix?: string;
   private readonly ownListingPathTemplate?: string;
+  private readonly ownListingFieldPaths: OwnListingFieldPaths;
   private readonly fetchImpl?: typeof fetch;
   private readonly transport?: TakealotSellerApiConfig["transport"];
 
@@ -390,6 +460,15 @@ export class TakealotSellerApiProvider implements MarketplaceProvider {
     this.authHeaderName = config.authHeaderName?.trim() || undefined;
     this.authHeaderPrefix = config.authHeaderPrefix?.trim() || undefined;
     this.ownListingPathTemplate = config.ownListingPathTemplate?.trim() || undefined;
+    this.ownListingFieldPaths = {
+      sellerName: normalizeConfiguredPath(config.ownListingSellerNamePath),
+      currentPrice: normalizeConfiguredPath(config.ownListingCurrentPricePath),
+      currency: normalizeConfiguredPath(config.ownListingCurrencyPath),
+      capturedAt: normalizeConfiguredPath(config.ownListingCapturedAtPath),
+      sellerSku: normalizeConfiguredPath(config.ownListingSellerSkuPath),
+      stockQuantity: normalizeConfiguredPath(config.ownListingStockQuantityPath),
+      listingStatus: normalizeConfiguredPath(config.ownListingListingStatusPath)
+    };
     this.fetchImpl = config.fetchImpl ?? globalThis.fetch?.bind(globalThis);
     this.transport = config.transport;
   }
@@ -453,7 +532,11 @@ export class TakealotSellerApiProvider implements MarketplaceProvider {
       );
     }
 
-    return normalizeOwnListingPayload(await response.json(), product);
+    return normalizeOwnListingPayload(
+      await response.json(),
+      product,
+      this.ownListingFieldPaths
+    );
   }
 
   async fetchOffers(_product: ProductMonitor): Promise<MarketOffer[]> {

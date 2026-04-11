@@ -29,6 +29,27 @@ export function SellerApiSettingsPanel({
   const [ownListingPathTemplate, setOwnListingPathTemplate] = useState(
     initialReport.settings.ownListingPathTemplate
   );
+  const [ownListingSellerNamePath, setOwnListingSellerNamePath] = useState(
+    initialReport.settings.ownListingSellerNamePath
+  );
+  const [ownListingCurrentPricePath, setOwnListingCurrentPricePath] = useState(
+    initialReport.settings.ownListingCurrentPricePath
+  );
+  const [ownListingCurrencyPath, setOwnListingCurrencyPath] = useState(
+    initialReport.settings.ownListingCurrencyPath
+  );
+  const [ownListingCapturedAtPath, setOwnListingCapturedAtPath] = useState(
+    initialReport.settings.ownListingCapturedAtPath
+  );
+  const [ownListingSellerSkuPath, setOwnListingSellerSkuPath] = useState(
+    initialReport.settings.ownListingSellerSkuPath
+  );
+  const [ownListingStockQuantityPath, setOwnListingStockQuantityPath] = useState(
+    initialReport.settings.ownListingStockQuantityPath
+  );
+  const [ownListingListingStatusPath, setOwnListingListingStatusPath] = useState(
+    initialReport.settings.ownListingListingStatusPath
+  );
   const [isPending, startTransition] = useTransition();
 
   async function saveSettings() {
@@ -43,7 +64,14 @@ export function SellerApiSettingsPanel({
         dryRun,
         authHeaderName,
         authHeaderPrefix,
-        ownListingPathTemplate
+        ownListingPathTemplate,
+        ownListingSellerNamePath,
+        ownListingCurrentPricePath,
+        ownListingCurrencyPath,
+        ownListingCapturedAtPath,
+        ownListingSellerSkuPath,
+        ownListingStockQuantityPath,
+        ownListingListingStatusPath
       })
     });
     const payload = (await response.json()) as SettingsResponse;
@@ -55,6 +83,13 @@ export function SellerApiSettingsPanel({
     setAuthHeaderName(payload.settings.authHeaderName);
     setAuthHeaderPrefix(payload.settings.authHeaderPrefix);
     setOwnListingPathTemplate(payload.settings.ownListingPathTemplate);
+    setOwnListingSellerNamePath(payload.settings.ownListingSellerNamePath);
+    setOwnListingCurrentPricePath(payload.settings.ownListingCurrentPricePath);
+    setOwnListingCurrencyPath(payload.settings.ownListingCurrencyPath);
+    setOwnListingCapturedAtPath(payload.settings.ownListingCapturedAtPath);
+    setOwnListingSellerSkuPath(payload.settings.ownListingSellerSkuPath);
+    setOwnListingStockQuantityPath(payload.settings.ownListingStockQuantityPath);
+    setOwnListingListingStatusPath(payload.settings.ownListingListingStatusPath);
     onSaved?.("已保存 Seller API 设置并刷新运行时接入状态");
   }
 
@@ -139,6 +174,76 @@ export function SellerApiSettingsPanel({
             disabled={disabled || isPending}
             onChange={(event) => {
               setOwnListingPathTemplate(event.target.value);
+            }}
+          />
+        </label>
+        <label>
+          <span>卖家名称字段路径</span>
+          <input
+            value={ownListingSellerNamePath}
+            disabled={disabled || isPending}
+            onChange={(event) => {
+              setOwnListingSellerNamePath(event.target.value);
+            }}
+          />
+        </label>
+        <label>
+          <span>当前价格字段路径</span>
+          <input
+            value={ownListingCurrentPricePath}
+            disabled={disabled || isPending}
+            onChange={(event) => {
+              setOwnListingCurrentPricePath(event.target.value);
+            }}
+          />
+        </label>
+        <label>
+          <span>币种字段路径</span>
+          <input
+            value={ownListingCurrencyPath}
+            disabled={disabled || isPending}
+            onChange={(event) => {
+              setOwnListingCurrencyPath(event.target.value);
+            }}
+          />
+        </label>
+        <label>
+          <span>同步时间字段路径</span>
+          <input
+            value={ownListingCapturedAtPath}
+            disabled={disabled || isPending}
+            onChange={(event) => {
+              setOwnListingCapturedAtPath(event.target.value);
+            }}
+          />
+        </label>
+        <label>
+          <span>Seller SKU 字段路径</span>
+          <input
+            value={ownListingSellerSkuPath}
+            disabled={disabled || isPending}
+            onChange={(event) => {
+              setOwnListingSellerSkuPath(event.target.value);
+            }}
+          />
+        </label>
+        <label>
+          <span>库存字段路径</span>
+          <input
+            value={ownListingStockQuantityPath}
+            disabled={disabled || isPending}
+            onChange={(event) => {
+              setOwnListingStockQuantityPath(event.target.value);
+            }}
+          />
+        </label>
+        <label>
+          <span>Listing 状态字段路径</span>
+          <input
+            value={ownListingListingStatusPath}
+            disabled={disabled || isPending}
+            onChange={(event) => {
+              setOwnListingListingStatusPath(event.target.value);
             }}
           />
         </label>

@@ -176,6 +176,7 @@ TAKEALOT_SELLER_API_SETTINGS_FILE_PATH=/absolute/path/to/takealot-seller-api-set
 - API key 只显示是否已配置和 masked preview，不会把旧 key 明文回填到页面
 - API key 输入框是替换模式，留空表示保持当前 key
 - GUI 设置优先于 `process.env`，便于本地运营同学直接切换 base URL、header、path template 和 `dry-run`
+- 如果真实响应字段名和当前默认猜测不同，可以直接在 GUI 里配置 own-listing 字段路径映射
 
 如果你已经拿到经过验证的 Seller API contract，当前版本可以用下面这组 env 打开 own-listing 真实读取：
 
@@ -185,11 +186,15 @@ TAKEALOT_SELLER_API_BASE_URL=https://verified-seller-api-base.example
 TAKEALOT_SELLER_API_AUTH_HEADER_NAME=Authorization
 TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX=Bearer
 TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE=/offers/{productId}
+TAKEALOT_SELLER_API_OWN_LISTING_CURRENT_PRICE_PATH=attributes.pricing.current.amount
+TAKEALOT_SELLER_API_OWN_LISTING_STOCK_QUANTITY_PATH=attributes.inventory.available_to_sell
 ```
 
 说明：
 
 - `TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE` 支持用商品字段占位；当前最稳妥的是 `{productId}`，如果你的真实 contract 需要别的字段，可以改成相应占位
+- `*_PATH` 映射字段都是可选的；只有当官方响应字段名偏离当前内置常见字段时才需要填写
+- 当前支持配置 `sellerName / currentPrice / currency / capturedAt / sellerSku / stockQuantity / listingStatus` 这 7 个 own-listing 字段路径
 - provider 会优先尝试把返回 JSON 规范化为 `sellerName / currentPrice / currency / sellerSku / stockQuantity / listingStatus / capturedAt`
 - 如果官方真实响应字段和当前常见字段映射不一致，需要继续补字段映射规则，而不是硬改成猜测版协议
 - 这条链路只针对卖家侧 own listing 读取，不包含竞品最低价、Buy Box 或 market intelligence
