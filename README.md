@@ -96,6 +96,7 @@ TAKEALOT_PROFILE_DIR=/absolute/path/to/takealot-browser-profile
 - `docs/bmad/ARCHITECTURE.md`
 - `docs/bmad/INTEGRATION-PLAN.md`
 - `docs/bmad/MILESTONES.md`
+- `docs/architecture/2026-04-11-marketplace-api-repricing-architecture.md`
 
 规则是：
 
