@@ -21,6 +21,7 @@
 - [Architecture](./ARCHITECTURE.md)
 - [Integration Plan](./INTEGRATION-PLAN.md)
 - [Milestones](./MILESTONES.md)
+- [Marketplace Runtime Architecture](../architecture/2026-04-11-marketplace-api-repricing-architecture.md)
 - [Seller API First Design](../plans/2026-04-09-takealot-seller-api-first-design.md)
 - [Seller API First Implementation Plan](../plans/2026-04-09-takealot-seller-api-first-implementation.md)
 

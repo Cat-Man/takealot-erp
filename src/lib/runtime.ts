@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { createMockProvider } from "@/integrations/mock-provider";
 import { createManualImportMarketProvider } from "@/integrations/manual-import-provider";
 import {
+  getTakealotSellerApiReadiness,
   loadTakealotSellerApiConfig,
   TakealotSellerApiProvider
 } from "@/integrations/takealot-seller-api";
@@ -10,6 +11,12 @@ import type {
   MarketIntelligenceProvider,
   MarketplaceProvider
 } from "@/integrations/marketplace";
+import {
+  getTakealotSellerApiSettingsReport,
+  mergeTakealotSellerApiEnv,
+  type TakealotSellerApiSettingsPatch,
+  updateTakealotSellerApiSettings
+} from "./takealot-seller-api-settings";
 import { ProductService } from "./service";
 import { JsonProductStore } from "./store";
 
@@ -17,17 +24,18 @@ let productServiceOverride: ProductService | null = null;
 let productServiceSingleton: ProductService | null = null;
 
 function createDefaultService(): ProductService {
+  const sellerApiEnv = mergeTakealotSellerApiEnv(process.env);
   const providers: Record<string, MarketplaceProvider> = {
     mock: createMockProvider(),
     "takealot-browser": new TakealotBrowserProvider({
       profileDir: process.env.TAKEALOT_PROFILE_DIR
     })
   };
-  const sellerApiKey = process.env.TAKEALOT_SELLER_API_KEY?.trim();
+  const sellerApiKey = sellerApiEnv.TAKEALOT_SELLER_API_KEY?.trim();
 
   if (sellerApiKey) {
     providers["takealot-seller-api"] = new TakealotSellerApiProvider(
-      loadTakealotSellerApiConfig(process.env)
+      loadTakealotSellerApiConfig(sellerApiEnv)
     );
   }
 
@@ -58,4 +66,25 @@ export function getProductService(): ProductService {
 
 export function setProductServiceOverride(service: ProductService | null): void {
   productServiceOverride = service;
+}
+
+export function resetProductServiceRuntime(): void {
+  productServiceOverride = null;
+  productServiceSingleton = null;
+}
+
+export function getTakealotSellerApiReadinessReport() {
+  return getTakealotSellerApiReadiness(mergeTakealotSellerApiEnv(process.env));
+}
+
+export function getTakealotSellerApiSettingsState() {
+  return getTakealotSellerApiSettingsReport(process.env);
+}
+
+export async function saveTakealotSellerApiSettings(
+  patch: TakealotSellerApiSettingsPatch
+) {
+  const report = await updateTakealotSellerApiSettings(patch, process.env);
+  resetProductServiceRuntime();
+  return report;
 }

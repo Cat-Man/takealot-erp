@@ -40,6 +40,53 @@ const products: ProductMonitor[] = [
   }
 ];
 
+const sellerCatalogProducts: ProductMonitor[] = [
+  {
+    id: "SKU-ABC123",
+    title:
+      "7-inch Kids Tablet Android Tabletsg 1GB 16GB Children's Education Learnin - Blue",
+    productUrl:
+      "https://www.takealot.com/7-inch-kids-tablet-android-tabletsg-1gb-16gb-childrens-education-learnin-blue/PLID98314826",
+    offerUrl: "",
+    provider: "takealot-seller-api",
+    sellerProvider: "takealot-seller-api",
+    marketProvider: "takealot-browser",
+    ownSellerName: "My Store",
+    currentPrice: 833,
+    offerId: 123456,
+    tsinId: 23456789,
+    sellerSku: "SKU-ABC123",
+    imageUrl: "https://images.takealot.com/offer-123456.jpg",
+    productlineId: 98314826,
+    benchmarkPrice: 838,
+    listingQuality: 85,
+    stockQuantity: 10,
+    listingStatus: "buyable",
+    rule: {
+      enabled: true,
+      undercutBy: 5,
+      floorPrice: 780,
+      ceilingPrice: 900,
+      costPrice: 620,
+      minMargin: 40
+    },
+    lastPreview: {
+      currentPrice: 833,
+      suggestedPrice: 832,
+      delta: -1,
+      margin: 212,
+      matchedCompetitor: {
+        sellerName: "Lumistar Store",
+        price: 833,
+        currency: "ZAR"
+      },
+      reason: "match_lowest_competitor",
+      shouldUpdate: true
+    },
+    lastCheckedAt: "2026-04-11T10:00:00.000Z"
+  }
+];
+
 const executions: PriceExecution[] = [
   {
     id: "exec-1",
@@ -91,6 +138,38 @@ const snapshots: MarketSnapshot[] = [
   }
 ];
 
+const sellerApiSettings = {
+  settings: {
+    apiKeyConfigured: true,
+    apiKeyPreview: "*********-key",
+    baseUrl: "https://seller-api.takealot.example",
+    dryRun: true,
+    authHeaderName: "Authorization",
+    authHeaderPrefix: "Bearer",
+    ownListingPathTemplate: "/offers/{productId}",
+    ownListingSellerNamePath: "attributes.merchant.display_name",
+    ownListingCurrentPricePath: "attributes.pricing.current.amount",
+    ownListingCurrencyPath: "attributes.pricing.current.currency",
+    ownListingCapturedAtPath: "attributes.synced_at",
+    ownListingSellerSkuPath: "attributes.seller.sku_code",
+    ownListingStockQuantityPath: "attributes.inventory.available_to_sell",
+    ownListingListingStatusPath: "attributes.lifecycle.state_label"
+  },
+  readiness: {
+    status: "dry_run_only",
+    apiKeyPresent: true,
+    baseUrl: "https://seller-api.takealot.example",
+    baseUrlSource: "custom-env",
+    dryRun: true,
+    authMode: "custom-header",
+    canAttemptLiveWrites: false,
+    canReadOwnListings: true,
+    canReadMarketIntelligence: false,
+    checks: [],
+    recommendedActions: []
+  }
+};
+
 describe("Dashboard", () => {
   afterEach(() => {
     cleanup();
@@ -102,6 +181,7 @@ describe("Dashboard", () => {
         initialProducts={products}
         initialExecutions={executions}
         initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
       />
     );
 
@@ -120,6 +200,7 @@ describe("Dashboard", () => {
         initialProducts={products}
         initialExecutions={executions}
         initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
       />
     );
 
@@ -133,6 +214,7 @@ describe("Dashboard", () => {
         initialProducts={products}
         initialExecutions={executions}
         initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
       />
     );
 
@@ -160,6 +242,7 @@ describe("Dashboard", () => {
         ]}
         initialExecutions={executions}
         initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
       />
     );
 
@@ -182,11 +265,15 @@ describe("Dashboard", () => {
         ]}
         initialExecutions={executions}
         initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
       />
     );
 
     expect(
       screen.getByRole("button", { name: "刷新 active 商品" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "同步 active 卖家数据" })
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "停用监控" })).toBeInTheDocument();
     expect(screen.getByText("监控中")).toBeInTheDocument();
@@ -194,5 +281,73 @@ describe("Dashboard", () => {
     expect(
       screen.getByText("manual-import / Manual Seller / R235")
     ).toBeInTheDocument();
+  });
+
+  it("shows own listing sync controls and seller-side fields", () => {
+    render(
+      <Dashboard
+        initialProducts={[
+          {
+            ...products[0]!,
+            sellerSku: "SKU-1",
+            stockQuantity: 14,
+            listingStatus: "active",
+            lastSellerSyncAt: "2026-04-10T02:00:00.000Z"
+          }
+        ]}
+        initialExecutions={executions}
+        initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "同步卖家数据" })).toBeInTheDocument();
+    expect(screen.getByText("SKU-1")).toBeInTheDocument();
+    expect(screen.getByText("14")).toBeInTheDocument();
+    expect(screen.getByText("active")).toBeInTheDocument();
+  });
+
+  it("shows a seller api settings panel with readiness context and save action", () => {
+    render(
+      <Dashboard
+        initialProducts={products}
+        initialExecutions={executions}
+        initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
+      />
+    );
+
+    expect(screen.getByText("Seller API 接入设置")).toBeInTheDocument();
+    expect(screen.getByText("API key 已配置")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("https://seller-api.takealot.example")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("/offers/{productId}")).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("attributes.pricing.current.amount")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("attributes.inventory.available_to_sell")
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "保存 Seller API 设置" })).toBeInTheDocument();
+  });
+
+  it("renders seller-api catalog products in a table while keeping mock products in cards", () => {
+    render(
+      <Dashboard
+        initialProducts={[...sellerCatalogProducts, ...products]}
+        initialExecutions={executions}
+        initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
+      />
+    );
+
+    expect(screen.getByText("店铺商品列表")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "同步店铺商品" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "SKU" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "TSIN" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "PLID" })).toBeInTheDocument();
+    expect(screen.getByText("SKU-ABC123")).toBeInTheDocument();
+    expect(screen.getByText("23456789")).toBeInTheDocument();
+    expect(screen.getByText("98314826")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Anker USB-C Cable" })).toBeInTheDocument();
   });
 });

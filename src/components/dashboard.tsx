@@ -6,13 +6,17 @@ import type {
   PriceExecution,
   ProductMonitor
 } from "@/core/types";
+import type { TakealotSellerApiSettingsReport } from "@/lib/takealot-seller-api-settings";
 import { ExecutionTable } from "./execution-table";
 import { ProductCard } from "./product-card";
+import { SellerApiSettingsPanel } from "./seller-api-settings-panel";
+import { SellerOfferTable } from "./seller-offer-table";
 
 type DashboardProps = {
   initialProducts: ProductMonitor[];
   initialExecutions: PriceExecution[];
   initialMarketSnapshots: MarketSnapshot[];
+  initialSellerApiSettings: TakealotSellerApiSettingsReport;
 };
 
 type RefreshResponse = {
@@ -26,6 +30,11 @@ type RefreshResponse = {
 type ApplyResponse = {
   product: ProductMonitor;
   execution: PriceExecution;
+};
+
+type OwnListingSyncResponse = {
+  product: ProductMonitor;
+  syncedAt: string;
 };
 
 type RuleResponse = {
@@ -51,6 +60,23 @@ type BatchRefreshResponse = {
   };
 };
 
+type BatchOwnListingSyncResponse = {
+  results: OwnListingSyncResponse[];
+  summary: {
+    requestedCount: number;
+    syncedCount: number;
+    skippedCount: number;
+  };
+};
+
+type SellerCatalogSyncResponse = {
+  summary: {
+    syncedCount: number;
+    skippedCount: number;
+  };
+  products: ProductMonitor[];
+};
+
 function mergeSnapshots(
   current: MarketSnapshot[],
   incoming: MarketSnapshot[]
@@ -73,13 +99,32 @@ function mergeSnapshots(
 export function Dashboard({
   initialProducts,
   initialExecutions,
-  initialMarketSnapshots
+  initialMarketSnapshots,
+  initialSellerApiSettings
 }: DashboardProps) {
   const [products, setProducts] = useState(initialProducts);
   const [executions, setExecutions] = useState(initialExecutions);
   const [marketSnapshots, setMarketSnapshots] = useState(initialMarketSnapshots);
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const sellerCatalogProducts = products.filter(
+    (product) => product.provider === "takealot-seller-api"
+  );
+  const cardProducts = products.filter(
+    (product) => product.provider !== "takealot-seller-api"
+  );
+
+  async function syncSellerCatalog() {
+    const response = await fetch("/api/products/sync-seller-catalog", {
+      method: "POST"
+    });
+    const payload = (await response.json()) as SellerCatalogSyncResponse;
+
+    setProducts(payload.products);
+    setMessage(
+      `已同步 ${payload.summary.syncedCount} 个店铺商品，跳过 ${payload.summary.skippedCount} 个`
+    );
+  }
 
   async function refreshProduct(productId: string) {
     const response = await fetch(`/api/products/${productId}/refresh`, {
@@ -114,6 +159,35 @@ export function Dashboard({
     );
     setMessage(
       `已批量刷新 ${payload.summary.refreshedCount} 个 active 商品，跳过 ${payload.summary.skippedCount} 个`
+    );
+  }
+
+  async function syncOwnListing(productId: string) {
+    const response = await fetch(`/api/products/${productId}/sync-own-listing`, {
+      method: "POST"
+    });
+    const payload = (await response.json()) as OwnListingSyncResponse;
+
+    setProducts((current) =>
+      current.map((product) => (product.id === productId ? payload.product : product))
+    );
+    setMessage(`已同步 ${payload.product.title} 的卖家数据`);
+  }
+
+  async function syncActiveOwnListingsBatch() {
+    const response = await fetch("/api/products/sync-own-listings-active", {
+      method: "POST"
+    });
+    const payload = (await response.json()) as BatchOwnListingSyncResponse;
+    const syncedProducts = new Map(
+      payload.results.map((result) => [result.product.id, result.product])
+    );
+
+    setProducts((current) =>
+      current.map((product) => syncedProducts.get(product.id) ?? product)
+    );
+    setMessage(
+      `已批量同步 ${payload.summary.syncedCount} 个 active 商品的卖家数据，跳过 ${payload.summary.skippedCount} 个`
     );
   }
 
@@ -214,6 +288,14 @@ export function Dashboard({
 
   return (
     <section className="dashboard">
+      <SellerApiSettingsPanel
+        initialReport={initialSellerApiSettings}
+        disabled={isPending}
+        onSaved={(nextMessage) => {
+          setMessage(nextMessage);
+        }}
+      />
+
       <div className="dashboard-meta">
         <div>
           <p className="section-label">运营看板</p>
@@ -232,6 +314,18 @@ export function Dashboard({
           >
             刷新 active 商品
           </button>
+          <button
+            type="button"
+            className="ghost-button"
+            disabled={isPending}
+            onClick={() => {
+              startTransition(() => {
+                void syncActiveOwnListingsBatch();
+              });
+            }}
+          >
+            同步 active 卖家数据
+          </button>
           <p className="status-note">
             {message ??
               "真实接入走 Seller API-first；browser fallback 仅作后备。先用 mock 验证规则，再补 API key、权限和市场数据来源。"}
@@ -239,8 +333,33 @@ export function Dashboard({
         </div>
       </div>
 
+      <SellerOfferTable
+        products={sellerCatalogProducts}
+        disabled={isPending}
+        onSyncCatalog={() => {
+          startTransition(() => {
+            void syncSellerCatalog();
+          });
+        }}
+        onRefreshProduct={(productId) => {
+          startTransition(() => {
+            void refreshProduct(productId);
+          });
+        }}
+        onSyncOwnListing={(productId) => {
+          startTransition(() => {
+            void syncOwnListing(productId);
+          });
+        }}
+        onApplyPrice={(productId) => {
+          startTransition(() => {
+            void applyPrice(productId);
+          });
+        }}
+      />
+
       <div className="product-grid">
-        {products.map((product) => (
+        {cardProducts.map((product) => (
           <ProductCard
             key={product.id}
             product={product}
@@ -254,6 +373,11 @@ export function Dashboard({
             onApply={() => {
               startTransition(() => {
                 void applyPrice(product.id);
+              });
+            }}
+            onSyncOwnListing={() => {
+              startTransition(() => {
+                void syncOwnListing(product.id);
               });
             }}
             onSaveProviders={(patch) => {

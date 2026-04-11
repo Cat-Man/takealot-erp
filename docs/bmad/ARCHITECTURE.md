@@ -61,6 +61,7 @@
 - 单商品刷新与手工市场导入都会落独立 `marketSnapshots`
 - `active` 监控状态只影响批量刷新入口，不阻断手工刷新或手工调价
 - `refreshActiveProducts()` 作为后续 cron / scheduler 的稳定服务接口
+- `syncOwnListing()` 作为卖家侧数据同步入口，只更新 own listing 字段，不生成市场快照
 
 ## 数据模型建议
 
@@ -76,6 +77,13 @@
 - `products[]`
 - `executions[]`
 - `marketSnapshots[]`
+
+其中 `products[]` 现在还承载卖家侧同步字段，例如：
+
+- `sellerSku`
+- `stockQuantity`
+- `listingStatus`
+- `lastSellerSyncAt`
 
 其中 `marketSnapshot` 不能假设一定有完整竞品列表，应该支持：
 
@@ -104,3 +112,4 @@
 - 没有 API 写权限时，不展示“自动执行已接通”
 - 任何自动调价都必须保留前值、建议值、原因、来源和执行时间
 - 当前 `active` 批量刷新仍是人工触发，不表示已经接入后台定时任务
+- `own listing sync` 只证明卖家侧数据可读，不证明竞品或 Buy Box 数据可读

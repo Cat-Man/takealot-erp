@@ -12,6 +12,7 @@ type ProductCardProps = {
   disabled?: boolean;
   onRefresh: () => void;
   onApply: () => void;
+  onSyncOwnListing: () => void;
   onToggleActive: () => void;
   onSaveProviders: (
     patch: Pick<ProductMonitor, "sellerProvider" | "marketProvider">
@@ -51,6 +52,7 @@ export function ProductCard({
   disabled,
   onRefresh,
   onApply,
+  onSyncOwnListing,
   onToggleActive,
   onSaveProviders,
   onSaveManualMarket,
@@ -105,6 +107,26 @@ export function ProductCard({
           <dt>最近刷新</dt>
           <dd>{product.lastCheckedAt ? product.lastCheckedAt.slice(11, 19) : "未刷新"}</dd>
         </div>
+        <div>
+          <dt>卖家 SKU</dt>
+          <dd>{product.sellerSku ?? "未同步"}</dd>
+        </div>
+        <div>
+          <dt>卖家库存</dt>
+          <dd>{product.stockQuantity ?? "未同步"}</dd>
+        </div>
+        <div>
+          <dt>Listing 状态</dt>
+          <dd>{product.listingStatus ?? "未同步"}</dd>
+        </div>
+        <div>
+          <dt>卖家同步</dt>
+          <dd>
+            {product.lastSellerSyncAt
+              ? product.lastSellerSyncAt.replace("T", " ").slice(5, 16)
+              : "未同步"}
+          </dd>
+        </div>
       </dl>
 
       <div className="provider-strip">
@@ -140,6 +162,9 @@ export function ProductCard({
       ) : null}
 
       <div className="card-actions">
+        <button type="button" onClick={onSyncOwnListing} disabled={disabled}>
+          同步卖家数据
+        </button>
         <button type="button" onClick={onRefresh} disabled={disabled}>
           刷新市场价
         </button>

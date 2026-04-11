@@ -92,6 +92,7 @@ Takealot 平台条款明确禁止使用：
 ## 技术建议
 
 - 项目内新增 `takealot-seller-api.ts`
+- 项目内新增 `Seller API readiness` 诊断层与 route
 - 把当前 `takealot-browser.ts` 标记为 fallback provider
 - 市场情报与卖家操作拆成两个接口
 - 所有真实写操作先加 dry-run 模式
@@ -102,5 +103,12 @@ Takealot 平台条款明确禁止使用：
 - `ProductService` 已支持 market provider 与 seller provider 分离
 - 已新增 `takealot-seller-api` skeleton，并在 runtime 中按环境变量注册
 - 缺少 `TAKEALOT_SELLER_API_KEY` 时会明确报错
+- 已新增 `GET /api/integrations/takealot-seller-api/readiness`，用于输出配置状态、guardrail 和后续动作建议
 - 鉴权头与写操作流程仍是保守占位实现，不伪装成已确认官方协议
 - 浏览器模式保留为 fallback，不再作为默认真实接入路线
+
+当前 readiness 的定位要保持明确：
+
+- 它只报告“是否具备继续接入的前置条件”
+- 它不会把占位鉴权头包装成已验证方案
+- 它不会把竞品数据能力误报为 Seller API 原生能力
