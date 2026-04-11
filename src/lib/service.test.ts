@@ -473,4 +473,86 @@ describe("ProductService", () => {
     expect(persisted.products[1].sellerSku).toBeUndefined();
     expect(persisted.products[1].stockQuantity).toBeUndefined();
   });
+
+  it("syncs Marketplace seller offers into stored products and generates public product URLs", async () => {
+    const filePath = join(
+      mkdtempSync(join(tmpdir(), "takealot-seller-catalog-")),
+      "db.json"
+    );
+    const service = new ProductService({
+      store: new JsonProductStore(filePath),
+      providers: {
+        "takealot-seller-api": {
+          async fetchOwnListing(product) {
+            return {
+              sellerName: "My Store",
+              currentPrice: product.currentPrice,
+              currency: "ZAR" as const,
+              capturedAt: "2026-04-11T10:00:00.000Z",
+              sellerSku: product.sellerSku,
+              stockQuantity: product.stockQuantity,
+              listingStatus: product.listingStatus
+            };
+          },
+          async fetchOffers() {
+            return [];
+          },
+          async applyPrice(_productId: string, newPrice: number) {
+            return {
+              appliedPrice: newPrice,
+              appliedAt: "2026-04-11T10:00:00.000Z",
+              mode: "live" as const
+            };
+          },
+          async listOwnOffers() {
+            return [
+              {
+                offerId: 123456,
+                tsinId: 23456789,
+                sellerSku: "SKU-ABC123",
+                title:
+                  "7-inch Kids Tablet Android Tabletsg 1GB 16GB Children's Education Learnin - Blue",
+                currentPrice: 833,
+                listingStatus: "buyable",
+                imageUrl: "https://images.takealot.com/offer-123456.jpg",
+                productlineId: 98314826,
+                benchmarkPrice: 838,
+                listingQuality: 85,
+                stockQuantity: 10
+              }
+            ];
+          }
+        }
+      }
+    });
+
+    await service.listProducts();
+    const result = await service.syncSellerCatalog();
+    const products = await service.listProducts();
+
+    expect(result).toMatchObject({
+      syncedCount: 1,
+      skippedCount: 0
+    });
+    expect(products).toHaveLength(1);
+    expect(products[0]).toMatchObject({
+      id: "SKU-ABC123",
+      title:
+        "7-inch Kids Tablet Android Tabletsg 1GB 16GB Children's Education Learnin - Blue",
+      sellerProvider: "takealot-seller-api",
+      marketProvider: "takealot-browser",
+      ownSellerName: "My Store",
+      currentPrice: 833,
+      sellerSku: "SKU-ABC123",
+      stockQuantity: 10,
+      listingStatus: "buyable",
+      offerId: 123456,
+      tsinId: 23456789,
+      productlineId: 98314826,
+      benchmarkPrice: 838,
+      listingQuality: 85,
+      productUrl:
+        "https://www.takealot.com/7-inch-kids-tablet-android-tabletsg-1gb-16gb-childrens-education-learnin-blue/PLID98314826"
+    });
+  });
 });

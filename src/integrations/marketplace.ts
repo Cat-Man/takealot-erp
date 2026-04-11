@@ -15,6 +15,20 @@ export type OwnListingSnapshot = {
   listingStatus?: string;
 };
 
+export type SellerCatalogOffer = {
+  offerId?: number;
+  tsinId?: number;
+  sellerSku: string;
+  title: string;
+  currentPrice: number;
+  listingStatus?: string;
+  imageUrl?: string;
+  productlineId?: number;
+  benchmarkPrice?: number;
+  listingQuality?: number;
+  stockQuantity?: number;
+};
+
 export type ApplyPriceResult = {
   appliedPrice: number;
   appliedAt: string;
@@ -37,6 +51,21 @@ export interface MarketIntelligenceProvider {
 export interface MarketplaceProvider
   extends SellerOperationsProvider,
     MarketIntelligenceProvider {}
+
+export interface SellerCatalogProvider {
+  listOwnOffers(): Promise<SellerCatalogOffer[]>;
+}
+
+export function isSellerCatalogProvider(
+  provider: unknown
+): provider is SellerCatalogProvider {
+  return (
+    typeof provider === "object" &&
+    provider !== null &&
+    "listOwnOffers" in provider &&
+    typeof provider.listOwnOffers === "function"
+  );
+}
 
 export type ResolvedProductProviders = {
   sellerProvider: ProviderKind;

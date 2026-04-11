@@ -20,6 +20,8 @@
 - `refresh-active` 批量刷新当前启用监控的商品
 - `own listing sync` 卖家侧商品数据同步
 - `sync-own-listings-active` 批量同步当前启用监控商品的卖家侧数据
+- `sync-seller-catalog` 从 Marketplace API 同步店铺商品列表
+- `seller-offer table` 用表格查看 seller catalog 商品并执行竞价动作
 
 ## 启动
 
@@ -66,6 +68,7 @@ data/takealot-seller-api-settings.json
 ```bash
 DATA_FILE_PATH=/absolute/path/to/store.json
 TAKEALOT_SELLER_API_SETTINGS_FILE_PATH=/absolute/path/to/takealot-seller-api-settings.json
+TAKEALOT_PROFILE_DIR=/absolute/path/to/takealot-browser-profile
 ```
 
 ## mock 演示模式
@@ -130,11 +133,13 @@ TAKEALOT_SELLER_API_SETTINGS_FILE_PATH=/absolute/path/to/takealot-seller-api-set
 - 缺少 `TAKEALOT_SELLER_API_KEY` 时会明确报错
 - 默认 own offer 读取已按官方 `GET /offers/by_sku/{sku}` 接线
 - 默认 live 改价已按官方 `PATCH /offers/by_sku/{sku}` 接线，但仍建议先保持 `dry-run`
+- 已支持 `GET /offers` 同步店铺商品列表到本地
 - 默认鉴权头已对齐官方 `X-API-Key`
 - 已支持通过 env 或 GUI 覆盖 base URL、header 和字段映射
 - 真实写操作默认建议保持 `dry-run`
 - `dry-run` 执行会落审计记录，但不会改本地持久化现价
 - 市场竞品最低价、搜索列表、Buy Box 仍不属于这套官方 API 已确认能力
+- `takealot-browser` 现在只负责前台商品页竞价抓取，不负责卖家侧写操作
 
 相关接口与前端能力：
 
@@ -142,6 +147,7 @@ TAKEALOT_SELLER_API_SETTINGS_FILE_PATH=/absolute/path/to/takealot-seller-api-set
 - `PATCH /api/products/:id/settings`：切换单商品的 `active` 监控状态
 - `PATCH /api/products/:id/manual-market`：保存手工最低竞品并立即刷新建议价
 - `POST /api/products/refresh-active`：批量刷新所有 `active !== false` 的商品
+- `POST /api/products/sync-seller-catalog`：从 Marketplace API 同步店铺商品到本地 products
 - `POST /api/products/:id/sync-own-listing`：同步单商品的卖家侧 listing 数据
 - `POST /api/products/sync-own-listings-active`：批量同步所有 `active !== false` 商品的卖家侧 listing 数据
 - `GET /api/products`：返回 `products`、`executions`、`marketSnapshots`
@@ -151,6 +157,7 @@ TAKEALOT_SELLER_API_SETTINGS_FILE_PATH=/absolute/path/to/takealot-seller-api-set
 - Dashboard 商品卡片可直接保存 provider 绑定
 - Dashboard 商品卡片可直接同步卖家侧数据并显示 `SKU / 库存 / listing 状态`
 - Dashboard 商品卡片可直接录入“手工最低价”
+- Dashboard 顶部现已提供 `店铺商品列表` 表格区，可直接同步店铺商品
 - Dashboard 顶部可直接批量刷新 active 商品
 - Dashboard 顶部可直接批量同步 active 商品的卖家侧数据
 - Dashboard 顶部现已提供 `Seller API 接入设置` 面板
@@ -162,6 +169,12 @@ TAKEALOT_SELLER_API_SETTINGS_FILE_PATH=/absolute/path/to/takealot-seller-api-set
 - `www.takealot.com` 与 `sellers.takealot.com` 在当前环境都会被 Cloudflare challenge 拦截
 - 平台条款对自动抓取/监控有风险
 - 卖家动作更适合走正式卖家接口
+
+当前它的新职责是：
+
+- 只在你显式点击“刷新市场价”或批量刷新时，打开前台商品页抓取 `Best Price / Other Offers`
+- 依赖持久化浏览器 profile，因此你需要准备 `TAKEALOT_PROFILE_DIR`
+- 这条链路与官方 Marketplace API 分离，不能混为一谈
 
 当前更推荐你先验证：
 
@@ -191,6 +204,7 @@ TAKEALOT_SELLER_API_SETTINGS_FILE_PATH=/absolute/path/to/takealot-seller-api-set
 
 ```bash
 TAKEALOT_SELLER_API_KEY=...
+TAKEALOT_PROFILE_DIR=/absolute/path/to/takealot-browser-profile
 ```
 
 说明：
@@ -199,6 +213,8 @@ TAKEALOT_SELLER_API_KEY=...
 - `baseUrl = https://marketplace-api.takealot.com/v1`
 - `authHeaderName = X-API-Key`
 - `ownListingPathTemplate = /offers/by_sku/{sellerSku}`
+- 同步店铺商品时会自动调用 `GET /offers`
+- 生成前台商品链接时会优先使用 `title + productline_id(PLID)`
 - `TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE` 支持用商品字段占位；当前默认是 `{sellerSku}`，缺失时会 fallback 到 `product.id`
 - `*_PATH` 映射字段都是可选的；只有当官方响应字段名偏离当前内置常见字段时才需要填写
 - 当前支持配置 `sellerName / currentPrice / currency / capturedAt / sellerSku / stockQuantity / listingStatus` 这 7 个 own-listing 字段路径
@@ -207,6 +223,12 @@ TAKEALOT_SELLER_API_KEY=...
 - 如果官方真实响应字段和当前常见字段映射不一致，需要继续补字段映射规则，而不是硬改成猜测版协议
 - 这条链路只针对卖家侧 own listing 读取，不包含竞品最低价、Buy Box 或 market intelligence
 - 真实写价仍然单独受 `dry-run` 保护，不会因为读链路打开就自动放开
+
+竞价抓取说明：
+
+- 前台最低价现在走 `takealot-browser` provider
+- 当前只在显式刷新时抓取，不会在页面加载时自动全量抓
+- 这样列表页可以先秒开，再按你需要逐行或批量刷新竞价数据
 
 当前还新增了 `own listing sync`：
 

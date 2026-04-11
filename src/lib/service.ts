@@ -12,10 +12,12 @@ import type {
   RepricingRule
 } from "@/core/types";
 import {
+  isSellerCatalogProvider,
   resolveProductProviders,
   type MarketIntelligenceProvider,
   type MarketplaceProvider,
   type OwnListingSnapshot,
+  type SellerCatalogOffer,
   type SellerOperationsProvider
 } from "@/integrations/marketplace";
 import { seedProducts } from "./fixtures";
@@ -76,6 +78,56 @@ export class ProductService {
     }
 
     return state.marketSnapshots.filter((snapshot) => snapshot.productId === productId);
+  }
+
+  async syncSellerCatalog(): Promise<{
+    syncedCount: number;
+    skippedCount: number;
+    products: ProductMonitor[];
+  }> {
+    const state = await this.ensureState();
+    const provider = this.sellerProviders["takealot-seller-api"];
+
+    if (!provider) {
+      throw new Error("Missing seller provider: takealot-seller-api");
+    }
+
+    if (!isSellerCatalogProvider(provider)) {
+      throw new Error(
+        "Configured takealot-seller-api provider does not support seller catalog sync."
+      );
+    }
+
+    const existingBySku = new Map(
+      state.products
+        .filter((product) => product.sellerSku || product.id)
+        .map((product) => [product.sellerSku ?? product.id, product] as const)
+    );
+    const importedProducts = (await provider.listOwnOffers()).map((offer) =>
+      this.mapSellerCatalogOfferToProduct(offer, existingBySku.get(offer.sellerSku))
+    );
+    const isDemoSeedCatalog =
+      state.products.length > 0 &&
+      state.products.every(
+        (product) =>
+          product.provider === "mock" &&
+          seedProducts.some((seed) => seed.id === product.id)
+      );
+    const preservedProducts = isDemoSeedCatalog
+      ? []
+      : state.products.filter((product) => {
+          const sellerSku = product.sellerSku ?? product.id;
+          return !importedProducts.some((entry) => entry.sellerSku === sellerSku);
+        });
+
+    state.products = [...importedProducts, ...preservedProducts];
+    await this.store.write(state);
+
+    return {
+      syncedCount: importedProducts.length,
+      skippedCount: 0,
+      products: state.products
+    };
   }
 
   async updateRule(productId: string, patch: RulePatch): Promise<ProductMonitor> {
@@ -414,6 +466,59 @@ export class ProductService {
     }
 
     return product;
+  }
+
+  private mapSellerCatalogOfferToProduct(
+    offer: SellerCatalogOffer,
+    existing?: ProductMonitor
+  ): ProductMonitor {
+    const defaultRule = structuredClone(seedProducts[0]!.rule);
+
+    return {
+      id: offer.sellerSku,
+      title: offer.title,
+      productUrl:
+        existing?.productUrl ??
+        this.buildPublicProductUrl(offer.title, offer.productlineId),
+      offerUrl: existing?.offerUrl ?? "",
+      provider: "takealot-seller-api",
+      sellerProvider: "takealot-seller-api",
+      marketProvider: existing?.marketProvider ?? "takealot-browser",
+      ownSellerName: existing?.ownSellerName ?? "My Store",
+      currentPrice: offer.currentPrice,
+      offerId: offer.offerId,
+      tsinId: offer.tsinId,
+      sellerSku: offer.sellerSku,
+      imageUrl: offer.imageUrl,
+      productlineId: offer.productlineId,
+      benchmarkPrice: offer.benchmarkPrice,
+      listingQuality: offer.listingQuality,
+      stockQuantity: offer.stockQuantity,
+      listingStatus: offer.listingStatus,
+      lastSellerSyncAt: existing?.lastSellerSyncAt,
+      active: existing?.active ?? true,
+      rule: existing?.rule ?? defaultRule,
+      manualMarketSnapshot: existing?.manualMarketSnapshot,
+      lastOffers: existing?.lastOffers,
+      lastCheckedAt: existing?.lastCheckedAt,
+      lastPreview: existing?.lastPreview
+    };
+  }
+
+  private buildPublicProductUrl(title: string, productlineId?: number): string {
+    if (!productlineId) {
+      return "https://www.takealot.com";
+    }
+
+    const slug = title
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/['’]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    return `https://www.takealot.com/${slug}/PLID${productlineId}`;
   }
 
   private getProviders(product: ProductMonitor): {

@@ -16,6 +16,7 @@ import { POST as syncOwnListing } from "./[id]/sync-own-listing/route";
 import { PATCH as updateRule } from "./[id]/rule/route";
 import { PATCH as updateSettings } from "./[id]/settings/route";
 import { POST as refreshActiveProducts } from "./refresh-active/route";
+import { POST as syncSellerCatalog } from "./sync-seller-catalog/route";
 import { POST as syncActiveOwnListings } from "./sync-own-listings-active/route";
 import { GET as getSellerApiReadiness } from "../integrations/takealot-seller-api/readiness/route";
 import { PATCH as updateSellerApiSettings } from "../integrations/takealot-seller-api/settings/route";
@@ -207,6 +208,81 @@ describe("products routes", () => {
       sellerSku: "SKU-1",
       stockQuantity: 14,
       listingStatus: "active"
+    });
+  });
+
+  it("syncs Marketplace seller catalog into products through the route", async () => {
+    const filePath = join(
+      mkdtempSync(join(tmpdir(), "takealot-routes-seller-catalog-")),
+      "db.json"
+    );
+    const sellerCatalogService = new ProductService({
+      store: new JsonProductStore(filePath),
+      providers: {
+        "takealot-seller-api": {
+          async fetchOwnListing(product) {
+            return {
+              sellerName: "My Store",
+              currentPrice: product.currentPrice,
+              currency: "ZAR" as const,
+              capturedAt: "2026-04-11T10:00:00.000Z",
+              sellerSku: product.sellerSku,
+              stockQuantity: product.stockQuantity,
+              listingStatus: product.listingStatus
+            };
+          },
+          async fetchOffers() {
+            return [];
+          },
+          async applyPrice(_productId: string, newPrice: number) {
+            return {
+              appliedPrice: newPrice,
+              appliedAt: "2026-04-11T10:00:00.000Z",
+              mode: "live" as const
+            };
+          },
+          async listOwnOffers() {
+            return [
+              {
+                offerId: 123456,
+                tsinId: 23456789,
+                sellerSku: "SKU-ABC123",
+                title:
+                  "7-inch Kids Tablet Android Tabletsg 1GB 16GB Children's Education Learnin - Blue",
+                currentPrice: 833,
+                listingStatus: "buyable",
+                imageUrl: "https://images.takealot.com/offer-123456.jpg",
+                productlineId: 98314826,
+                benchmarkPrice: 838,
+                listingQuality: 85,
+                stockQuantity: 10
+              }
+            ];
+          }
+        }
+      }
+    });
+
+    setProductServiceOverride(sellerCatalogService);
+    await sellerCatalogService.listProducts();
+
+    const response = await syncSellerCatalog(
+      new Request("http://localhost/api/products/sync-seller-catalog", {
+        method: "POST"
+      })
+    );
+    const payload = await response.json();
+
+    expect(payload.summary).toMatchObject({
+      syncedCount: 1,
+      skippedCount: 0
+    });
+    expect(payload.products).toHaveLength(1);
+    expect(payload.products[0]).toMatchObject({
+      id: "SKU-ABC123",
+      sellerProvider: "takealot-seller-api",
+      productlineId: 98314826,
+      currentPrice: 833
     });
   });
 

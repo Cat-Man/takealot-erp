@@ -306,6 +306,68 @@ describe("TakealotSellerApiProvider", () => {
     });
   });
 
+  it("lists Marketplace offers for the seller catalog and normalizes offer metadata", async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          items: [
+            {
+              offer_id: 123456,
+              tsin_id: 23456789,
+              sku: "SKU-ABC123",
+              title: "7-inch Kids Tablet Android Tabletsg 1GB 16GB Children's Education Learnin - Blue",
+              selling_price: 833,
+              status: "buyable",
+              image_url: "https://images.takealot.com/offer-123456.jpg",
+              productline_id: 98314826,
+              benchmark_price: 838,
+              listing_quality: 85,
+              seller_warehouse_stock: [
+                { seller_warehouse_id: 1, quantity_available: 4 },
+                { seller_warehouse_id: 2, quantity_available: 6 }
+              ]
+            }
+          ],
+          limit: 100
+        };
+      }
+    }));
+    const provider = new TakealotSellerApiProvider({
+      apiKey: "seller-api-key",
+      fetchImpl
+    });
+
+    const offers = await provider.listOwnOffers();
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      expect.stringContaining("https://marketplace-api.takealot.com/v1/offers"),
+      expect.objectContaining({
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": "seller-api-key"
+        }
+      })
+    );
+    expect(offers).toEqual([
+      {
+        offerId: 123456,
+        tsinId: 23456789,
+        sellerSku: "SKU-ABC123",
+        title: "7-inch Kids Tablet Android Tabletsg 1GB 16GB Children's Education Learnin - Blue",
+        currentPrice: 833,
+        listingStatus: "buyable",
+        imageUrl: "https://images.takealot.com/offer-123456.jpg",
+        productlineId: 98314826,
+        benchmarkPrice: 838,
+        listingQuality: 85,
+        stockQuantity: 10
+      }
+    ]);
+  });
+
   it("reports missing_api_key when no Seller API credentials are configured", () => {
     const readiness = getTakealotSellerApiReadiness({});
 

@@ -49,7 +49,13 @@ export type ProductMonitor = {
   marketProvider?: ProviderKind;
   ownSellerName: string;
   currentPrice: number;
+  offerId?: number;
+  tsinId?: number;
   sellerSku?: string;
+  imageUrl?: string;
+  productlineId?: number;
+  benchmarkPrice?: number;
+  listingQuality?: number;
   stockQuantity?: number;
   listingStatus?: string;
   lastSellerSyncAt?: string;

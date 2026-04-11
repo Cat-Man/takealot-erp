@@ -40,6 +40,53 @@ const products: ProductMonitor[] = [
   }
 ];
 
+const sellerCatalogProducts: ProductMonitor[] = [
+  {
+    id: "SKU-ABC123",
+    title:
+      "7-inch Kids Tablet Android Tabletsg 1GB 16GB Children's Education Learnin - Blue",
+    productUrl:
+      "https://www.takealot.com/7-inch-kids-tablet-android-tabletsg-1gb-16gb-childrens-education-learnin-blue/PLID98314826",
+    offerUrl: "",
+    provider: "takealot-seller-api",
+    sellerProvider: "takealot-seller-api",
+    marketProvider: "takealot-browser",
+    ownSellerName: "My Store",
+    currentPrice: 833,
+    offerId: 123456,
+    tsinId: 23456789,
+    sellerSku: "SKU-ABC123",
+    imageUrl: "https://images.takealot.com/offer-123456.jpg",
+    productlineId: 98314826,
+    benchmarkPrice: 838,
+    listingQuality: 85,
+    stockQuantity: 10,
+    listingStatus: "buyable",
+    rule: {
+      enabled: true,
+      undercutBy: 5,
+      floorPrice: 780,
+      ceilingPrice: 900,
+      costPrice: 620,
+      minMargin: 40
+    },
+    lastPreview: {
+      currentPrice: 833,
+      suggestedPrice: 832,
+      delta: -1,
+      margin: 212,
+      matchedCompetitor: {
+        sellerName: "Lumistar Store",
+        price: 833,
+        currency: "ZAR"
+      },
+      reason: "match_lowest_competitor",
+      shouldUpdate: true
+    },
+    lastCheckedAt: "2026-04-11T10:00:00.000Z"
+  }
+];
+
 const executions: PriceExecution[] = [
   {
     id: "exec-1",
@@ -281,5 +328,26 @@ describe("Dashboard", () => {
       screen.getByDisplayValue("attributes.inventory.available_to_sell")
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "保存 Seller API 设置" })).toBeInTheDocument();
+  });
+
+  it("renders seller-api catalog products in a table while keeping mock products in cards", () => {
+    render(
+      <Dashboard
+        initialProducts={[...sellerCatalogProducts, ...products]}
+        initialExecutions={executions}
+        initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
+      />
+    );
+
+    expect(screen.getByText("店铺商品列表")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "同步店铺商品" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "SKU" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "TSIN" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "PLID" })).toBeInTheDocument();
+    expect(screen.getByText("SKU-ABC123")).toBeInTheDocument();
+    expect(screen.getByText("23456789")).toBeInTheDocument();
+    expect(screen.getByText("98314826")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Anker USB-C Cable" })).toBeInTheDocument();
   });
 });

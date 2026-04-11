@@ -10,6 +10,7 @@ import type { TakealotSellerApiSettingsReport } from "@/lib/takealot-seller-api-
 import { ExecutionTable } from "./execution-table";
 import { ProductCard } from "./product-card";
 import { SellerApiSettingsPanel } from "./seller-api-settings-panel";
+import { SellerOfferTable } from "./seller-offer-table";
 
 type DashboardProps = {
   initialProducts: ProductMonitor[];
@@ -68,6 +69,14 @@ type BatchOwnListingSyncResponse = {
   };
 };
 
+type SellerCatalogSyncResponse = {
+  summary: {
+    syncedCount: number;
+    skippedCount: number;
+  };
+  products: ProductMonitor[];
+};
+
 function mergeSnapshots(
   current: MarketSnapshot[],
   incoming: MarketSnapshot[]
@@ -98,6 +107,24 @@ export function Dashboard({
   const [marketSnapshots, setMarketSnapshots] = useState(initialMarketSnapshots);
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const sellerCatalogProducts = products.filter(
+    (product) => product.provider === "takealot-seller-api"
+  );
+  const cardProducts = products.filter(
+    (product) => product.provider !== "takealot-seller-api"
+  );
+
+  async function syncSellerCatalog() {
+    const response = await fetch("/api/products/sync-seller-catalog", {
+      method: "POST"
+    });
+    const payload = (await response.json()) as SellerCatalogSyncResponse;
+
+    setProducts(payload.products);
+    setMessage(
+      `已同步 ${payload.summary.syncedCount} 个店铺商品，跳过 ${payload.summary.skippedCount} 个`
+    );
+  }
 
   async function refreshProduct(productId: string) {
     const response = await fetch(`/api/products/${productId}/refresh`, {
@@ -306,8 +333,33 @@ export function Dashboard({
         </div>
       </div>
 
+      <SellerOfferTable
+        products={sellerCatalogProducts}
+        disabled={isPending}
+        onSyncCatalog={() => {
+          startTransition(() => {
+            void syncSellerCatalog();
+          });
+        }}
+        onRefreshProduct={(productId) => {
+          startTransition(() => {
+            void refreshProduct(productId);
+          });
+        }}
+        onSyncOwnListing={(productId) => {
+          startTransition(() => {
+            void syncOwnListing(productId);
+          });
+        }}
+        onApplyPrice={(productId) => {
+          startTransition(() => {
+            void applyPrice(productId);
+          });
+        }}
+      />
+
       <div className="product-grid">
-        {products.map((product) => (
+        {cardProducts.map((product) => (
           <ProductCard
             key={product.id}
             product={product}

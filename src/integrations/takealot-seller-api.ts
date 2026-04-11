@@ -2,7 +2,8 @@ import type { MarketOffer, ProductMonitor } from "@/core/types";
 import type {
   ApplyPriceResult,
   MarketplaceProvider,
-  OwnListingSnapshot
+  OwnListingSnapshot,
+  SellerCatalogOffer
 } from "./marketplace";
 
 export type TakealotSellerApiTransportRequest = {
@@ -219,6 +220,25 @@ function readNumberCandidate(payload: unknown, candidates: string[]): number | u
   }
 
   return undefined;
+}
+
+function buildCollectionUrl(
+  baseUrl: string,
+  path: string,
+  query: Record<string, string | number | boolean | undefined>
+): string {
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+  const url = new URL(`${normalizedBaseUrl}/${path.replace(/^\/+/, "")}`);
+
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined) {
+      continue;
+    }
+
+    url.searchParams.set(key, String(value));
+  }
+
+  return url.toString();
 }
 
 function normalizeConfiguredPath(path: string | undefined): string | undefined {
@@ -581,6 +601,74 @@ export class TakealotSellerApiProvider implements MarketplaceProvider {
     throw new Error(
       "Takealot Seller API market intelligence endpoint is not wired yet. Use verified seller data or an approved secondary source."
     );
+  }
+
+  async listOwnOffers(): Promise<SellerCatalogOffer[]> {
+    if (!this.fetchImpl) {
+      throw new Error(
+        "Takealot Marketplace API seller catalog sync requires fetch support in this runtime."
+      );
+    }
+
+    const offers: SellerCatalogOffer[] = [];
+    let continuationToken: string | undefined;
+
+    do {
+      const response = await this.fetchImpl(
+        buildCollectionUrl(this.baseUrl, "/offers", {
+          limit: 1000,
+          expands: "seller_warehouse_stock",
+          continuation_token: continuationToken
+        }),
+        {
+          method: "GET",
+          headers: this.buildAuthHeaders()
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Takealot Marketplace API offer list failed with status ${response.status}.`
+        );
+      }
+
+      const payload = (await response.json()) as {
+        items?: unknown[];
+        continuation_token?: string;
+      };
+
+      for (const item of payload.items ?? []) {
+        const currentPrice = readNumberCandidate(item, ["selling_price"]);
+        const sellerSku = readStringCandidate(item, ["sku"]);
+        const title = readStringCandidate(item, ["title"]);
+
+        if (
+          currentPrice === undefined ||
+          !sellerSku ||
+          !title
+        ) {
+          continue;
+        }
+
+        offers.push({
+          offerId: readNumberCandidate(item, ["offer_id"]),
+          tsinId: readNumberCandidate(item, ["tsin_id"]),
+          sellerSku,
+          title,
+          currentPrice,
+          listingStatus: readStringCandidate(item, ["status"]),
+          imageUrl: readStringCandidate(item, ["image_url"]),
+          productlineId: readNumberCandidate(item, ["productline_id"]),
+          benchmarkPrice: readNumberCandidate(item, ["benchmark_price"]),
+          listingQuality: readNumberCandidate(item, ["listing_quality"]),
+          stockQuantity: sumSellerWarehouseStock(item)
+        });
+      }
+
+      continuationToken = payload.continuation_token;
+    } while (continuationToken);
+
+    return offers;
   }
 
   async applyPrice(
