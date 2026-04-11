@@ -18,6 +18,7 @@ import { PATCH as updateSettings } from "./[id]/settings/route";
 import { POST as refreshActiveProducts } from "./refresh-active/route";
 import { POST as syncActiveOwnListings } from "./sync-own-listings-active/route";
 import { GET as getSellerApiReadiness } from "../integrations/takealot-seller-api/readiness/route";
+import { PATCH as updateSellerApiSettings } from "../integrations/takealot-seller-api/settings/route";
 
 describe("products routes", () => {
   let service: ProductService;
@@ -373,6 +374,104 @@ describe("products routes", () => {
         canAttemptLiveWrites: false
       });
     } finally {
+      if (previousApiKey === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_KEY;
+      } else {
+        process.env.TAKEALOT_SELLER_API_KEY = previousApiKey;
+      }
+
+      if (previousBaseUrl === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_BASE_URL;
+      } else {
+        process.env.TAKEALOT_SELLER_API_BASE_URL = previousBaseUrl;
+      }
+
+      if (previousDryRun === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_DRY_RUN;
+      } else {
+        process.env.TAKEALOT_SELLER_API_DRY_RUN = previousDryRun;
+      }
+
+      if (previousAuthHeaderName === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_AUTH_HEADER_NAME;
+      } else {
+        process.env.TAKEALOT_SELLER_API_AUTH_HEADER_NAME = previousAuthHeaderName;
+      }
+
+      if (previousAuthHeaderPrefix === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX;
+      } else {
+        process.env.TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX = previousAuthHeaderPrefix;
+      }
+
+      if (previousOwnListingPathTemplate === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE;
+      } else {
+        process.env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE =
+          previousOwnListingPathTemplate;
+      }
+    }
+  });
+
+  it("reports own-listing reads as available when gui-saved Seller API settings exist", async () => {
+    const previousSettingsFilePath = process.env.TAKEALOT_SELLER_API_SETTINGS_FILE_PATH;
+    const previousApiKey = process.env.TAKEALOT_SELLER_API_KEY;
+    const previousBaseUrl = process.env.TAKEALOT_SELLER_API_BASE_URL;
+    const previousDryRun = process.env.TAKEALOT_SELLER_API_DRY_RUN;
+    const previousAuthHeaderName =
+      process.env.TAKEALOT_SELLER_API_AUTH_HEADER_NAME;
+    const previousAuthHeaderPrefix =
+      process.env.TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX;
+    const previousOwnListingPathTemplate =
+      process.env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE;
+
+    process.env.TAKEALOT_SELLER_API_SETTINGS_FILE_PATH = join(
+      mkdtempSync(join(tmpdir(), "takealot-seller-api-gui-")),
+      "settings.json"
+    );
+    delete process.env.TAKEALOT_SELLER_API_KEY;
+    delete process.env.TAKEALOT_SELLER_API_BASE_URL;
+    delete process.env.TAKEALOT_SELLER_API_DRY_RUN;
+    delete process.env.TAKEALOT_SELLER_API_AUTH_HEADER_NAME;
+    delete process.env.TAKEALOT_SELLER_API_AUTH_HEADER_PREFIX;
+    delete process.env.TAKEALOT_SELLER_API_OWN_LISTING_PATH_TEMPLATE;
+
+    try {
+      await updateSellerApiSettings(
+        new Request("http://localhost/api/integrations/takealot-seller-api/settings", {
+          method: "PATCH",
+          headers: {
+            "content-type": "application/json"
+          },
+          body: JSON.stringify({
+            apiKey: "seller-api-key",
+            baseUrl: "https://seller-api.takealot.example",
+            dryRun: true,
+            authHeaderName: "Authorization",
+            authHeaderPrefix: "Bearer",
+            ownListingPathTemplate: "/offers/{productId}"
+          })
+        })
+      );
+
+      const response = await getSellerApiReadiness();
+      const payload = await response.json();
+
+      expect(payload).toMatchObject({
+        status: "dry_run_only",
+        apiKeyPresent: true,
+        baseUrlSource: "custom-env",
+        authMode: "custom-header",
+        canReadOwnListings: true,
+        canAttemptLiveWrites: false
+      });
+    } finally {
+      if (previousSettingsFilePath === undefined) {
+        delete process.env.TAKEALOT_SELLER_API_SETTINGS_FILE_PATH;
+      } else {
+        process.env.TAKEALOT_SELLER_API_SETTINGS_FILE_PATH = previousSettingsFilePath;
+      }
+
       if (previousApiKey === undefined) {
         delete process.env.TAKEALOT_SELLER_API_KEY;
       } else {

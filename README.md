@@ -55,10 +55,17 @@ pnpm build
 data/store.json
 ```
 
+Seller API 图形化设置默认单独持久化到：
+
+```text
+data/takealot-seller-api-settings.json
+```
+
 可通过环境变量覆盖：
 
 ```bash
 DATA_FILE_PATH=/absolute/path/to/store.json
+TAKEALOT_SELLER_API_SETTINGS_FILE_PATH=/absolute/path/to/takealot-seller-api-settings.json
 ```
 
 ## mock 演示模式
@@ -131,11 +138,14 @@ DATA_FILE_PATH=/absolute/path/to/store.json
 - `POST /api/products/sync-own-listings-active`：批量同步所有 `active !== false` 商品的卖家侧 listing 数据
 - `GET /api/products`：返回 `products`、`executions`、`marketSnapshots`
 - `GET /api/integrations/takealot-seller-api/readiness`：返回 Seller API 配置与安全缺口诊断
+- `GET /api/integrations/takealot-seller-api/settings`：返回 Seller API 图形化设置摘要与 readiness
+- `PATCH /api/integrations/takealot-seller-api/settings`：保存本地 Seller API 图形化设置并立即刷新 runtime
 - Dashboard 商品卡片可直接保存 provider 绑定
 - Dashboard 商品卡片可直接同步卖家侧数据并显示 `SKU / 库存 / listing 状态`
 - Dashboard 商品卡片可直接录入“手工最低价”
 - Dashboard 顶部可直接批量刷新 active 商品
 - Dashboard 顶部可直接批量同步 active 商品的卖家侧数据
+- Dashboard 顶部现已提供 `Seller API 接入设置` 面板
 - Dashboard 商品卡片可直接启停监控，并展示最近 1-3 条市场快照
 - 执行历史会把 `dry_run` 明确标成“模拟执行”
 
@@ -160,6 +170,12 @@ DATA_FILE_PATH=/absolute/path/to/store.json
 - 为什么系统仍然不能宣称“真实写接口已接通”
 
 这个 readiness 只做保守诊断，不代表官方协议已经确认，也不会自动放开真实读写。
+
+现在不必再手改 `.env` 才能验证 own-listing 读取链路。Dashboard 顶部的 `Seller API 接入设置` 面板会把配置写入本地 JSON 文件，并在保存后立即重置 runtime：
+
+- API key 只显示是否已配置和 masked preview，不会把旧 key 明文回填到页面
+- API key 输入框是替换模式，留空表示保持当前 key
+- GUI 设置优先于 `process.env`，便于本地运营同学直接切换 base URL、header、path template 和 `dry-run`
 
 如果你已经拿到经过验证的 Seller API contract，当前版本可以用下面这组 env 打开 own-listing 真实读取：
 

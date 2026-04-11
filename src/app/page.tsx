@@ -1,6 +1,9 @@
 import { resolveProductProviders } from "@/integrations/marketplace";
 import { Dashboard } from "@/components/dashboard";
-import { getProductService } from "@/lib/runtime";
+import {
+  getProductService,
+  getTakealotSellerApiSettingsState
+} from "@/lib/runtime";
 
 async function loadInitialData() {
   const service = getProductService();
@@ -17,12 +20,14 @@ async function loadInitialData() {
   return {
     products: await service.listProducts(),
     executions: await service.listExecutions(),
-    marketSnapshots: await service.listMarketSnapshots()
+    marketSnapshots: await service.listMarketSnapshots(),
+    sellerApiSettings: getTakealotSellerApiSettingsState()
   };
 }
 
 export default async function Home() {
-  const { products, executions, marketSnapshots } = await loadInitialData();
+  const { products, executions, marketSnapshots, sellerApiSettings } =
+    await loadInitialData();
 
   return (
     <main className="shell">
@@ -39,6 +44,7 @@ export default async function Home() {
         initialProducts={products}
         initialExecutions={executions}
         initialMarketSnapshots={marketSnapshots}
+        initialSellerApiSettings={sellerApiSettings}
       />
     </main>
   );

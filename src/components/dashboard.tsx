@@ -6,13 +6,16 @@ import type {
   PriceExecution,
   ProductMonitor
 } from "@/core/types";
+import type { TakealotSellerApiSettingsReport } from "@/lib/takealot-seller-api-settings";
 import { ExecutionTable } from "./execution-table";
 import { ProductCard } from "./product-card";
+import { SellerApiSettingsPanel } from "./seller-api-settings-panel";
 
 type DashboardProps = {
   initialProducts: ProductMonitor[];
   initialExecutions: PriceExecution[];
   initialMarketSnapshots: MarketSnapshot[];
+  initialSellerApiSettings: TakealotSellerApiSettingsReport;
 };
 
 type RefreshResponse = {
@@ -87,7 +90,8 @@ function mergeSnapshots(
 export function Dashboard({
   initialProducts,
   initialExecutions,
-  initialMarketSnapshots
+  initialMarketSnapshots,
+  initialSellerApiSettings
 }: DashboardProps) {
   const [products, setProducts] = useState(initialProducts);
   const [executions, setExecutions] = useState(initialExecutions);
@@ -257,6 +261,14 @@ export function Dashboard({
 
   return (
     <section className="dashboard">
+      <SellerApiSettingsPanel
+        initialReport={initialSellerApiSettings}
+        disabled={isPending}
+        onSaved={(nextMessage) => {
+          setMessage(nextMessage);
+        }}
+      />
+
       <div className="dashboard-meta">
         <div>
           <p className="section-label">运营看板</p>

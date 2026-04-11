@@ -91,6 +91,31 @@ const snapshots: MarketSnapshot[] = [
   }
 ];
 
+const sellerApiSettings = {
+  settings: {
+    apiKeyConfigured: true,
+    apiKeyPreview: "*********-key",
+    baseUrl: "https://seller-api.takealot.example",
+    dryRun: true,
+    authHeaderName: "Authorization",
+    authHeaderPrefix: "Bearer",
+    ownListingPathTemplate: "/offers/{productId}"
+  },
+  readiness: {
+    status: "dry_run_only",
+    apiKeyPresent: true,
+    baseUrl: "https://seller-api.takealot.example",
+    baseUrlSource: "custom-env",
+    dryRun: true,
+    authMode: "custom-header",
+    canAttemptLiveWrites: false,
+    canReadOwnListings: true,
+    canReadMarketIntelligence: false,
+    checks: [],
+    recommendedActions: []
+  }
+};
+
 describe("Dashboard", () => {
   afterEach(() => {
     cleanup();
@@ -102,6 +127,7 @@ describe("Dashboard", () => {
         initialProducts={products}
         initialExecutions={executions}
         initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
       />
     );
 
@@ -120,6 +146,7 @@ describe("Dashboard", () => {
         initialProducts={products}
         initialExecutions={executions}
         initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
       />
     );
 
@@ -133,6 +160,7 @@ describe("Dashboard", () => {
         initialProducts={products}
         initialExecutions={executions}
         initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
       />
     );
 
@@ -160,6 +188,7 @@ describe("Dashboard", () => {
         ]}
         initialExecutions={executions}
         initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
       />
     );
 
@@ -182,6 +211,7 @@ describe("Dashboard", () => {
         ]}
         initialExecutions={executions}
         initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
       />
     );
 
@@ -213,6 +243,7 @@ describe("Dashboard", () => {
         ]}
         initialExecutions={executions}
         initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
       />
     );
 
@@ -220,5 +251,22 @@ describe("Dashboard", () => {
     expect(screen.getByText("SKU-1")).toBeInTheDocument();
     expect(screen.getByText("14")).toBeInTheDocument();
     expect(screen.getByText("active")).toBeInTheDocument();
+  });
+
+  it("shows a seller api settings panel with readiness context and save action", () => {
+    render(
+      <Dashboard
+        initialProducts={products}
+        initialExecutions={executions}
+        initialMarketSnapshots={snapshots}
+        initialSellerApiSettings={sellerApiSettings}
+      />
+    );
+
+    expect(screen.getByText("Seller API 接入设置")).toBeInTheDocument();
+    expect(screen.getByText("API key 已配置")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("https://seller-api.takealot.example")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("/offers/{productId}")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "保存 Seller API 设置" })).toBeInTheDocument();
   });
 });
